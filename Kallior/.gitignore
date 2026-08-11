@@ -1,0 +1,40 @@
+*.iml
+.kotlin
+.gradle
+**/build/
+xcuserdata
+!src/**/build/
+local.properties
+.idea
+.DS_Store
+captures
+.externalNativeBuild
+.cxx
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
+node_modules/
+
+# Profiling traces
+*.perfetto
+
+# Build logs & temp files
+*_output.txt
+*_build*.txt
+*.log
+*.tmp
+
+# AI tool config directories
+.claude/
+.cursor/
+.orchids/
+.qwen/
+.kimchi/
+.artifacts/
+
+# OS files
+desktop.ini
+Thumbs.db
