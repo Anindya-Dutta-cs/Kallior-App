@@ -4,9 +4,16 @@ import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +38,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -52,6 +60,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -63,6 +73,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -80,6 +93,7 @@ import org.example.project.R
 import org.example.project.SettingsRepository
 import org.example.project.TimeWastingAppsRepository
 import org.example.project.WebsiteBlockerRepository
+import org.example.project.ui.Philosopher
 
 @Composable
 fun FocusFortressScreen(navController: NavHostController, onMenuClick: () -> Unit) {
@@ -183,7 +197,7 @@ fun FocusFortressScreen(navController: NavHostController, onMenuClick: () -> Uni
             .fillMaxSize()
             .background(KalliorColors.SecondaryBackground)
             .verticalScroll(scrollState)
-            .padding(horizontal = 36.dp),
+            .padding(horizontal = 24.dp),
     ) {
         Spacer(Modifier.height(48.dp))
         MenuButton(onClick = onMenuClick)
@@ -192,24 +206,27 @@ fun FocusFortressScreen(navController: NavHostController, onMenuClick: () -> Uni
         Text(
             text = "Focus Fortress",
             style = MaterialTheme.typography.displaySmall.copy(
-                fontFamily = FontFamily.Serif,
+                fontFamily = Philosopher,
                 fontWeight = FontWeight.Bold,
                 fontSize = 36.sp,
             ),
             color = KalliorColors.NormalText,
             modifier = Modifier.graphicsLayer { scaleY = titleScale },
         )
-        Spacer(Modifier.height(30.dp))
+        Spacer(Modifier.height(40.dp))
 
-        val refreshRotation = remember { Animatable(0f) }
-        ProtectionCard(
-            rotation = refreshRotation.value,
+        LotusIllustration(
             onClick = {
-                scope.launch {
-                    refreshRotation.animateTo(refreshRotation.value + 360f, animationSpec = tween(600))
-                }
                 refreshProtection()
             },
+        )
+        
+        Spacer(Modifier.height(24.dp))
+        Text(
+            text = "Protection is active",
+            style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Serif, fontSize = 20.sp),
+            color = KalliorColors.NormalText,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
         )
 
         if (!hasUsage) {
@@ -221,49 +238,59 @@ fun FocusFortressScreen(navController: NavHostController, onMenuClick: () -> Uni
         if (batteryOptimizationEnabled) {
             PermissionRow("Disable Battery Optimization") { permissionManager.requestIgnoreBatteryOptimizations() }
         }
-        if (hasUsage && hasOverlay) {
-            PermissionRow("Enable Always-on VPN for 24/7 blocking") {
-                context.startActivity(permissionManager.getAlwaysOnVpnSettingsIntent())
-            }
-        }
 
-        Spacer(Modifier.height(28.dp))
-        Text(
-            text = "Overview",
-            style = MaterialTheme.typography.headlineMedium.copy(fontFamily = FontFamily.Serif, fontSize = 31.sp),
-            color = KalliorColors.NormalText,
-        )
-        Spacer(Modifier.height(17.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-            OverviewMetricCard(
-                title = "Total Screen Time",
-                value = totalSeconds?.let(::formatDuration) ?: "--",
-                iconRes = R.drawable.totalscreentime,
-                modifier = Modifier.weight(1f),
-            )
-            OverviewMetricCard(
+        Spacer(Modifier.height(60.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            MetricItem(
                 title = "Time Sink",
                 value = if (screenTimeData == null) "--" else formatDuration(sinkSeconds),
-                iconRes = R.drawable.time_sink,
+                modifier = Modifier.weight(1f)
+            )
+            MetricItem(
+                title = "Total Screen Time",
+                value = totalSeconds?.let(::formatDuration) ?: "--",
                 modifier = Modifier.weight(1f),
+                alignment = Alignment.End
             )
         }
 
-        Spacer(Modifier.height(38.dp))
-        FortressListsCard(
-            timeWastingCount = timeWastingApps.size,
-            blockedAppsCount = blockedApps.size,
-            blockedWebsitesCount = blockedWebsites.size,
-            onTimeWastersClick = { navController.navigate("addApp?mode=TIME_WASTING") },
-            onAppsClick = { navController.navigate("addApp") },
-            onWebsitesClick = { showWebsitesDialog = true },
+        Spacer(Modifier.height(32.dp))
+        
+        TimeWastingAppsCard(
+            count = timeWastingApps.size,
+            onClick = { navController.navigate("addApp?mode=TIME_WASTING") }
         )
+        
+        Spacer(Modifier.height(20.dp))
+        
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            LimitedActionCard(
+                title = "Limited Apps",
+                subtitle = "${blockedApps.size} Apps Blocked",
+                iconRes = R.drawable.apps_blocked,
+                onClick = { navController.navigate("addApp") },
+                modifier = Modifier.weight(1f)
+            )
+            LimitedActionCard(
+                title = "Limited Websites",
+                subtitle = "${blockedWebsites.size} Websites Blocked",
+                iconRes = R.drawable.websites_blocked,
+                onClick = { showWebsitesDialog = true },
+                modifier = Modifier.weight(1f)
+            )
+        }
 
-        Spacer(Modifier.height(38.dp))
-        EarningsCard(
+        Spacer(Modifier.height(40.dp))
+        
+        RedesignedEarningsCard(
             apps = sinkApps,
             hasUsageData = screenTimeData != null,
             totalSinkSeconds = sinkSeconds,
+            formattedSinkTime = if (screenTimeData == null) "--" else formatDuration(sinkSeconds),
             ratePerSecond = ratePerSecond,
             onRateChange = { rate -> scope.launch { settingsRepository.setRatePerSecond(rate) } },
         )
@@ -313,135 +340,231 @@ private fun MenuButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun ProtectionCard(rotation: Float, onClick: () -> Unit) {
-    Row(
+private fun LotusIllustration(onClick: () -> Unit) {
+    val infiniteTransition = rememberInfiniteTransition(label = "ripple")
+    val rippleProgress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(6000, easing = LinearEasing), // Slower for a calm vibe
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rippleProgress"
+    )
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(75.dp)
-            .clip(RoundedCornerShape(21.dp))
-            .background(KalliorColors.PrimaryLayer)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 37.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .height(280.dp)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "Protection is active",
-            style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Serif, fontSize = 18.sp),
-            color = KalliorColors.NormalText,
-        )
+        // Staggered ripples
+        listOf(0f, 0.2f, 0.4f, 0.6f, 0.8f).forEach { offset ->
+            val progress = (rippleProgress + offset) % 1f
+            // Starts small (icon size is ~120dp, base here is 100dp) and expands
+            val scale = 0.8f + progress * 2.2f
+            val alpha = (1f - progress) * 0.3f
+
+            Box(
+                modifier = Modifier
+                    .size(120.dp * scale)
+                    .graphicsLayer {
+                        this.alpha = alpha
+                    }
+                    .clip(CircleShape)
+                    .background(KalliorColors.AccentOrange.copy(alpha = 0.35f))
+            )
+        }
+
+        // Core glow
         Box(
             modifier = Modifier
-                .size(46.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(KalliorColors.AccentOrange),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.apps_blocked),
-                contentDescription = "Refresh protection",
-                tint = Color(0xFF321E0B),
-                modifier = Modifier
-                    .size(23.dp)
-                    .graphicsLayer { rotationZ = rotation },
+                .size(100.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF884411).copy(alpha = 0.5f))
+        )
+
+        Icon(
+            painter = painterResource(R.drawable.protection__in_active),
+            contentDescription = null,
+            tint = KalliorColors.AccentOrange,
+            modifier = Modifier.size(120.dp)
+        )
+    }
+}
+
+@Composable
+private fun MetricItem(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    alignment: Alignment.Horizontal = Alignment.Start
+) {
+    Column(modifier = modifier, horizontalAlignment = alignment) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = title,
+                color = KalliorColors.NormalText,
+                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = Philosopher, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = value,
+                color = KalliorColors.AccentOrange,
+                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = Philosopher, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             )
         }
     }
 }
 
 @Composable
-private fun OverviewMetricCard(title: String, value: String, iconRes: Int, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .height(95.dp)
-            .clip(RoundedCornerShape(21.dp))
-            .background(KalliorColors.PrimaryLayer)
-            .padding(horizontal = 14.dp, vertical = 16.dp),
+private fun TimeWastingAppsCard(count: Int, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp)
+            .border(1.dp, KalliorColors.RadarLine, RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(28.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = title,
-            color = KalliorColors.NormalText,
-            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Serif, fontSize = 10.sp),
-            modifier = Modifier.align(Alignment.CenterHorizontally),
+        Icon(
+            painter = painterResource(R.drawable.apps_selected),
+            contentDescription = null,
+            tint = KalliorColors.AccentOrange,
+            modifier = Modifier.size(48.dp)
         )
-        Spacer(Modifier.weight(1f))
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Spacer(Modifier.width(20.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                "Apps that waste your time",
+                color = KalliorColors.NormalText,
+                style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.SemiBold)
+            )
+            Text(
+                "-- $count Apps Selected",
+                color = KalliorColors.MutedText,
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif)
+            )
+        }
+        ShineActionButton(
+            onClick = onClick,
+            icon = Icons.AutoMirrored.Filled.KeyboardArrowRight
+        )
+    }
+}
+
+@Composable
+private fun ShineActionButton(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "buttonShine")
+    val shineProgress by infiniteTransition.animateFloat(
+        initialValue = -1f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 8000
+                -1f at 0
+                2f at 1500
+                2f at 8000
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shineProgress"
+    )
+
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(KalliorColors.AccentOrange)
+            .drawWithContent {
+                drawContent()
+                // Shine gradient
+                val shineWidth = size.width * 0.4f
+                val centerX = size.width * shineProgress
+                drawRect(
+                    brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                        0f to Color.Transparent,
+                        0.5f to Color.White.copy(alpha = 0.4f),
+                        1f to Color.Transparent,
+                        start = Offset(centerX - shineWidth, 0f),
+                        end = Offset(centerX + shineWidth, size.height)
+                    ),
+                    size = size
+                )
+            }
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            null,
+            tint = Color.Black,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun LimitedActionCard(
+    title: String,
+    subtitle: String,
+    iconRes: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier.height(180.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 20.dp)
+                .border(1.dp, KalliorColors.RadarLine, RoundedCornerShape(28.dp))
+                .clip(RoundedCornerShape(28.dp))
+                .clickable(onClick = onClick)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
                 tint = KalliorColors.AccentOrange,
-                modifier = Modifier.size(if (iconRes == R.drawable.time_sink) 47.dp else 43.dp),
+                modifier = Modifier.size(48.dp)
             )
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(12.dp))
             Text(
-                text = value,
-                color = KalliorColors.AccentOrange,
-                style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold),
-                maxLines = 1,
+                title,
+                color = KalliorColors.NormalText,
+                style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.SemiBold),
+                textAlign = TextAlign.Center
+            )
+            Text(
+                subtitle,
+                color = KalliorColors.MutedText,
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
+                textAlign = TextAlign.Center
             )
         }
-    }
-}
-
-@Composable
-private fun FortressListsCard(
-    timeWastingCount: Int,
-    blockedAppsCount: Int,
-    blockedWebsitesCount: Int,
-    onTimeWastersClick: () -> Unit,
-    onAppsClick: () -> Unit,
-    onWebsitesClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(21.dp))
-            .background(KalliorColors.PrimaryLayer)
-            .padding(horizontal = 18.dp, vertical = 12.dp),
-    ) {
-        FortressListRow("Apps that waste your time", "-- $timeWastingCount Apps Selected", R.drawable.apps_selected, onTimeWastersClick)
-        HorizontalDivider(color = KalliorColors.RadarLine, thickness = 1.dp)
-        FortressListRow("Limited Apps", "-- $blockedAppsCount Apps Blocked", R.drawable.apps_blocked, onAppsClick)
-        HorizontalDivider(color = KalliorColors.RadarLine, thickness = 1.dp)
-        FortressListRow("Limited Websites", "-- $blockedWebsitesCount Websites Blocked", R.drawable.websites_blocked, onWebsitesClick)
-    }
-}
-
-@Composable
-private fun FortressListRow(title: String, subtitle: String, iconRes: Int, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            painter = painterResource(iconRes),
-            contentDescription = null,
-            tint = KalliorColors.AccentOrange,
-            modifier = Modifier.size(31.dp),
+        ShineActionButton(
+            onClick = onClick,
+            icon = Icons.Default.KeyboardArrowUp,
+            modifier = Modifier.align(Alignment.BottomCenter)
         )
-        Spacer(Modifier.width(24.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, color = KalliorColors.NormalText, style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.SemiBold, fontSize = 14.sp))
-            Spacer(Modifier.height(4.dp))
-            Text(subtitle, color = KalliorColors.MutedText, style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Serif, fontSize = 10.sp))
-        }
-        Box(
-            modifier = Modifier.size(31.dp).clip(CircleShape).background(KalliorColors.AccentOrange),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Open $title", tint = Color.Black, modifier = Modifier.size(23.dp))
-        }
     }
 }
 
 @Composable
-private fun EarningsCard(
+private fun RedesignedEarningsCard(
     apps: List<AppUsageData>,
     hasUsageData: Boolean,
     totalSinkSeconds: Long,
+    formattedSinkTime: String,
     ratePerSecond: Float,
     onRateChange: (Float) -> Unit,
 ) {
@@ -450,26 +573,35 @@ private fun EarningsCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(21.dp))
-            .background(KalliorColors.PrimaryLayer)
-            .padding(horizontal = 29.dp, vertical = 20.dp),
+            .border(1.dp, KalliorColors.RadarLine, RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(28.dp))
+            .padding(24.dp),
     ) {
-        Text("You could've earned", color = KalliorColors.NormalText, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif, fontSize = 12.sp))
-        Spacer(Modifier.height(5.dp))
         Text(
-            text = if (hasUsageData) "$${String.format("%.2f", earnings)}" else "$ --",
+            "You could've earned",
+            color = KalliorColors.MutedText,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = Philosopher)
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = if (hasUsageData) "$ ${String.format("%.2f", earnings)}" else "$ --",
             color = KalliorColors.AccentOrange,
-            style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, fontSize = 24.sp),
+            style = MaterialTheme.typography.displayMedium.copy(fontFamily = Philosopher, fontWeight = FontWeight.Bold, fontSize = 36.sp),
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
-            text = "In the time you spent: [show 'Sink Time']",
-            color = KalliorColors.NormalText,
-            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif, fontSize = 12.sp),
+            text = buildAnnotatedString {
+                append("In the time you spent: ")
+                withStyle(style = SpanStyle(color = KalliorColors.AccentOrange)) {
+                    append(formattedSinkTime)
+                }
+            },
+            color = KalliorColors.MutedText,
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = Philosopher),
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(24.dp))
         HorizontalDivider(color = KalliorColors.RadarLine, thickness = 1.dp)
-        Spacer(Modifier.height(11.dp))
+        Spacer(Modifier.height(16.dp))
 
         if (apps.isEmpty()) {
             Text(
@@ -480,24 +612,25 @@ private fun EarningsCard(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
             )
         } else {
-            apps.sortedByDescending { it.timeInForegroundMs }.take(4).forEach { EarningsRow(it, ratePerSecond) }
+            apps.sortedByDescending { it.timeInForegroundMs }.take(4).forEach { RedesignedEarningsRow(it, ratePerSecond) }
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
         HorizontalDivider(color = KalliorColors.RadarLine, thickness = 1.dp)
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(24.dp))
+        
         Box(
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
-                .clip(RoundedCornerShape(18.dp))
+                .clip(RoundedCornerShape(20.dp))
                 .background(Color.Transparent)
                 .clickable { showRateDialog = true }
-                .padding(horizontal = 27.dp, vertical = 7.dp),
+                .padding(horizontal = 32.dp, vertical = 12.dp),
         ) {
             Text(
-                "$${String.format("%.2f", ratePerSecond)} /sec",
+                "$ ${String.format("%.3f", ratePerSecond)} /sec",
                 color = KalliorColors.NormalText,
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = Philosopher),
             )
         }
     }
@@ -510,17 +643,35 @@ private fun EarningsCard(
 }
 
 @Composable
-private fun EarningsRow(app: AppUsageData?, ratePerSecond: Float) {
-    val seconds = app?.timeInForegroundMs?.div(1000L) ?: 0L
+private fun RedesignedEarningsRow(app: AppUsageData, ratePerSecond: Float) {
+    val seconds = app.timeInForegroundMs / 1000L
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(9.dp).clip(CircleShape).background(KalliorColors.AccentOrange))
-        Spacer(Modifier.width(14.dp))
-        Text(app?.appName ?: "App name", color = KalliorColors.NormalText, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif, fontSize = 12.sp), modifier = Modifier.weight(1f), maxLines = 1)
-        Text(if (app == null) "--" else formatDuration(seconds), color = KalliorColors.NormalText, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif, fontSize = 12.sp), modifier = Modifier.width(72.dp), textAlign = TextAlign.Center, maxLines = 1)
-        Text(if (app == null) "$--" else "$${String.format("%.2f", seconds * ratePerSecond)}", color = KalliorColors.AccentOrange, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif, fontSize = 12.sp), modifier = Modifier.width(35.dp), textAlign = TextAlign.End)
+        Box(Modifier.size(10.dp).clip(CircleShape).background(KalliorColors.AccentOrange))
+        Spacer(Modifier.width(16.dp))
+        Text(
+            app.appName,
+            color = KalliorColors.NormalText,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Serif),
+            modifier = Modifier.weight(1f),
+            maxLines = 1
+        )
+        Text(
+            formatDuration(seconds),
+            color = KalliorColors.NormalText,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Serif),
+            modifier = Modifier.width(80.dp),
+            textAlign = TextAlign.Center
+        )
+        Text(
+            "$ ${String.format("%.2f", seconds * ratePerSecond)}",
+            color = KalliorColors.AccentOrange,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold),
+            modifier = Modifier.width(60.dp),
+            textAlign = TextAlign.End
+        )
     }
 }
 
