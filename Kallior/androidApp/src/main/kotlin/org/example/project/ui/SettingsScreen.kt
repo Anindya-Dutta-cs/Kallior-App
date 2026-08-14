@@ -35,6 +35,10 @@ import kotlinx.coroutines.launch
 import org.example.project.health.AccelerometerStepForegroundService
 import org.example.project.health.HealthDependencies
 import org.example.project.health.SleepSchedule
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 
 /**
  * Settings screen with a "Health & Sleep" section that exposes:
@@ -138,7 +142,9 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(KalliorColors.SecondaryBackground),
+            .background(KalliorColors.SecondaryBackground)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .windowInsetsPadding(WindowInsets.navigationBars),
     ) {
         // Top bar
         Row(

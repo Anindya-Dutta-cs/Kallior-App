@@ -1,5 +1,11 @@
 package org.example.project.ui
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -115,6 +121,9 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -311,14 +320,16 @@ fun HomeScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .zIndex(1f)
-                    .padding(top = 48.dp),
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(top = 16.dp),
             )
 
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .graphicsLayer { scaleX = scale; scaleY = scale }
-                    .padding(top = 48.dp),
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(top = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -433,7 +444,19 @@ fun DeleteConfirmationDialog(
 ) {
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete Task") },
+        title = {
+            val view = LocalView.current
+            SideEffect {
+                val window = (view.parent as? DialogWindowProvider)?.window
+                if (window != null) {
+                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        window.isNavigationBarContrastEnforced = false
+                    }
+                }
+            }
+            Text("Delete Task")
+        },
         text = { Text("Are you sure you want to delete this task?") },
         confirmButton = {
             androidx.compose.material3.TextButton(onClick = onConfirm) {
@@ -534,6 +557,7 @@ private fun SharedHomeSections(
                         }
                     )
                 )
+                .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(top = 130.dp, bottom = 50.dp),
         ) {
             Column(
@@ -561,24 +585,19 @@ private fun SharedHomeSections(
                     enabled = !isShadow,
                 ) {
                     val ordered = tasks.sortedWith(compareBy { it.task.status == kallos.model.TaskStatus.Completed })
-                    LazyColumn(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(tasksHeight(ordered.size))
-                            .clipToBounds(),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+                            .padding(vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
-                        userScrollEnabled = false,
                     ) {
-                        items(items = ordered, key = { it.task.id }) { taskUi ->
+                        ordered.forEach { taskUi ->
                             SwipeableTaskItem(
                                 task = taskUi.task,
                                 taskUi = taskUi,
                                 interactionsEnabled = !isShadow,
                                 onComplete = { onCompleteTask(taskUi.task.id) },
                                 onDelete = { onDeleteTask(taskUi.task.id) },
-                                modifier = Modifier
-                                    .animateItem(placementSpec = slideEnter),
                             )
                         }
                     }
@@ -598,21 +617,17 @@ private fun SharedHomeSections(
                     buttonGlyphColor = if (isShadow) ShadowButtonGlyph else Color.White,
                     enabled = !isShadow,
                 ) {
-                    LazyColumn(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(remindersHeight(reminders.size))
-                            .clipToBounds(),
-                        contentPadding = PaddingValues(vertical = 8.dp),
+                            .padding(vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
-                        userScrollEnabled = false,
                     ) {
-                        items(items = reminders, key = { it.id }) { reminder ->
+                        reminders.forEach { reminder ->
                             SwipeableReminderItem(
                                 reminder = reminder,
                                 interactionsEnabled = !isShadow,
                                 onDelete = { onRemoveReminder(reminder.id) },
-                                modifier = Modifier.animateItem(),
                             )
                         }
                     }
@@ -628,9 +643,9 @@ private fun SharedHomeSections(
 /** Generous height so the nested [LazyColumn] lays out all rows without an inner scroll. */
 private fun tasksHeight(count: Int): androidx.compose.ui.unit.Dp {
     if (count <= 0) return 0.dp
-    val row = 120.dp
+    val row = 72.dp
     val gap = 4.dp
-    return row * count + gap * (count - 1) + 24.dp
+    return row * count + gap * (count - 1) + 16.dp
 }
 
 @Composable
@@ -811,17 +826,18 @@ private fun TaskItemRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .height(androidx.compose.foundation.layout.IntrinsicSize.Min)
             .clip(RoundedCornerShape(12.dp))
             .background(Color.Transparent)
             .padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 12.dp)
             .graphicsLayer { this.alpha = alpha; this.colorFilter = colorFilter },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Vertical Color Indicator
+        // Vertical Color Indicator - dynamically fills vertical height of card
         Box(
             modifier = Modifier
                 .width(6.dp)
-                .height(36.dp)
+                .fillMaxHeight()
                 .clip(RoundedCornerShape(3.dp))
                 .background(task.category.toColor())
         )
@@ -857,7 +873,7 @@ private fun TaskItemRow(
             if (task.description.isNotBlank()) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = task.description,
+                    text = parseFormattedText(task.description),
                     style = MaterialTheme.typography.labelSmall,
                     color = KalliorColors.MutedText,
                 )
@@ -1036,15 +1052,21 @@ private fun ReminderItemRow(
                 maxLines = 1,
             )
             Spacer(modifier = Modifier.height(2.dp))
-            val detail = buildString {
-                append(formatReminderTime(reminder.time))
-                reminder.description?.let { append(" · $it") }
-            }
             Text(
-                text = detail,
+                text = formatReminderTime(reminder.time),
                 style = MaterialTheme.typography.labelSmall,
                 color = KalliorColors.MutedText,
             )
+            reminder.description?.let { desc ->
+                if (desc.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = parseFormattedText(desc),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = KalliorColors.MutedText,
+                    )
+                }
+            }
         }
     }
 }
@@ -1054,10 +1076,10 @@ private fun formatReminderTime(time: kotlin.time.Instant): String {
     return SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(date)
 }
 
-/** Fixed height so the nested [LazyColumn] lays out all rows without an inner scroll. */
+/** Generous height so the nested [LazyColumn] lays out all rows without an inner scroll. */
 private fun remindersHeight(count: Int): androidx.compose.ui.unit.Dp {
     if (count <= 0) return 0.dp
-    val row = 64.dp
+    val row = 120.dp
     val gap = 4.dp
     return row * count + gap * (count - 1) + 16.dp
 }
@@ -1162,7 +1184,8 @@ fun BoxScope.ShadowOverlay(
                 .fillMaxWidth()
                 .align(Alignment.TopCenter)
                 .zIndex(1f)
-                .padding(top = 48.dp)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = 16.dp)
                 .padding(horizontal = 36.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -1189,7 +1212,8 @@ fun BoxScope.ShadowOverlay(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .graphicsLayer { scaleX = scale; scaleY = scale }
-                .padding(top = 48.dp),
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(modifier = Modifier.height(16.dp))

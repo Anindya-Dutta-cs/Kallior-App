@@ -436,6 +436,86 @@ class ShadowRadarEngineTest {
     }
 
     @Test
+    fun topThreeAveragedAcrossDailySnapshots() {
+        // Regression: each daily snapshot stores only that day's score, so the
+        // top-3 rule must look across the 4-day window instead of today's list
+        // (which would otherwise copy the user's current score).
+        val day1 = snapshot(LocalDate(2026, 5, 28), disciplineList = listOf(50.0))
+        val day2 = snapshot(LocalDate(2026, 5, 29), disciplineList = listOf(60.0))
+        val day3 = snapshot(LocalDate(2026, 5, 30), disciplineList = listOf(70.0))
+        val day4 = snapshot(LocalDate(2026, 5, 31), disciplineList = listOf(80.0))
+        val shadowScores = ShadowRadarEngine.computeShadowScores(
+            userScores = RadarScores(0.0, 0.0, 0.0, 0.0, 0.0),
+            snapshots = listOf(day1, day2, day3, day4),
+            tasks = emptyList(),
+            now = Instant.fromEpochMilliseconds(0),
+            shadow = ShadowProfile(),
+        )
+        // Top 3 of [50, 60, 70, 80] = 80, 70, 60 → average 70
+        assertEquals(70.0, shadowScores.discipline)
+    }
+
+    @Test
+    fun eachShadowFieldUsesItsOwnTopThreeHistory() {
+        val day1 = snapshot(
+            date = LocalDate(2026, 5, 28),
+            disciplineList = listOf(10.0),
+            focusList = listOf(90.0),
+            healthList = listOf(20.0),
+        )
+        val day2 = snapshot(
+            date = LocalDate(2026, 5, 29),
+            disciplineList = listOf(20.0),
+            focusList = listOf(80.0),
+            healthList = listOf(30.0),
+        )
+        val day3 = snapshot(
+            date = LocalDate(2026, 5, 30),
+            disciplineList = listOf(30.0),
+            focusList = listOf(70.0),
+            healthList = listOf(40.0),
+        )
+        val day4 = snapshot(
+            date = LocalDate(2026, 5, 31),
+            disciplineList = listOf(40.0),
+            focusList = listOf(60.0),
+            healthList = listOf(50.0),
+        )
+        val shadowScores = ShadowRadarEngine.computeShadowScores(
+            userScores = RadarScores(0.0, 0.0, 0.0, 0.0, 0.0),
+            snapshots = listOf(day1, day2, day3, day4),
+            tasks = emptyList(),
+            now = Instant.fromEpochMilliseconds(0),
+            shadow = ShadowProfile(),
+        )
+        // discipline top 3 of [10, 20, 30, 40] = 40, 30, 20 → 30
+        assertEquals(30.0, shadowScores.discipline)
+        // focus top 3 of [90, 80, 70, 60] = 90, 80, 70 → 80
+        assertEquals(80.0, shadowScores.focus)
+        // health top 3 of [20, 30, 40, 50] = 50, 40, 30 → 40
+        assertEquals(40.0, shadowScores.health)
+    }
+
+    @Test
+    fun historyOlderThanFourDaysIsIgnored() {
+        val old = snapshot(LocalDate(2026, 5, 20), disciplineList = listOf(100.0))
+        val day1 = snapshot(LocalDate(2026, 5, 28), disciplineList = listOf(50.0))
+        val day2 = snapshot(LocalDate(2026, 5, 29), disciplineList = listOf(60.0))
+        val day3 = snapshot(LocalDate(2026, 5, 30), disciplineList = listOf(70.0))
+        val day4 = snapshot(LocalDate(2026, 5, 31), disciplineList = listOf(80.0))
+        val shadowScores = ShadowRadarEngine.computeShadowScores(
+            userScores = RadarScores(0.0, 0.0, 0.0, 0.0, 0.0),
+            snapshots = listOf(old, day1, day2, day3, day4),
+            tasks = emptyList(),
+            now = Instant.fromEpochMilliseconds(0),
+            shadow = ShadowProfile(),
+        )
+        // The 100 from May 20 is outside the 4-day window → top 3 of
+        // [50, 60, 70, 80] = 80, 70, 60 → average 70
+        assertEquals(70.0, shadowScores.discipline)
+    }
+
+    @Test
     fun shadowConsistencyZeroWithUncompletedTasks() {
         val now = Instant.fromEpochMilliseconds(1000)
         val task = Task.create(Category.Work, shelvedAt = now - 10.hours)
@@ -574,5 +654,29 @@ class ShadowRadarEngineTest {
         )
         // 1 of 1 tasks completed (by shadow) → 100%
         assertEquals(100.0, shadowScores.consistency)
+    }
+}
+
+class DailyMetricSnapshotTest {
+
+    @Test
+    fun scoreListKeepsOneEntryPerDayAndDropsOldest() {
+        // First sync of the day: appends.
+        var list = DailyMetricSnapshot.updateScoreList(emptyList(), 60.0)
+        assertEquals(listOf(60.0), list)
+
+        // Later sync on the SAME day: replaces the day's entry, no duplicate.
+        list = DailyMetricSnapshot.updateScoreList(list, 75.0)
+        assertEquals(listOf(75.0), list)
+
+        // Three more days fill the history to 4 distinct days.
+        list = DailyMetricSnapshot.updateScoreList(list, 70.0)
+        list = DailyMetricSnapshot.updateScoreList(list, 80.0)
+        list = DailyMetricSnapshot.updateScoreList(list, 90.0)
+        assertEquals(listOf(75.0, 70.0, 80.0, 90.0), list)
+
+        // A fifth day evicts the oldest (first-in) score.
+        list = DailyMetricSnapshot.updateScoreList(list, 50.0)
+        assertEquals(listOf(70.0, 80.0, 90.0, 50.0), list)
     }
 }

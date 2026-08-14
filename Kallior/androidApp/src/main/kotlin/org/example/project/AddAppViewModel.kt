@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 
 data class AddAppUiState(
     val categories: List<String> = emptyList(),
-    val apps: List<InstalledAppInfo> = emptyList(),
+    val appsByCategory: Map<String, List<InstalledAppInfo>> = emptyMap(),
     val blockedApps: Set<String> = emptySet(),
     val strictlyBlockedApps: Set<String> = emptySet(),
 )
@@ -31,13 +31,10 @@ class AddAppViewModel(private val context: Context, private val mode: String = "
 
     private val categories: List<String> = provider.getCategories()
 
-    private val _selectedCategory = MutableStateFlow(categories.firstOrNull().orEmpty())
-    val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
-
     private val _uiState = MutableStateFlow(
         AddAppUiState(
             categories = categories,
-            apps = filterFor(_selectedCategory.value),
+            appsByCategory = categories.associateWith { filterFor(it) },
         ),
     )
     val uiState: StateFlow<AddAppUiState> = _uiState.asStateFlow()
@@ -60,16 +57,6 @@ class AddAppViewModel(private val context: Context, private val mode: String = "
             }
         }
     }
-
-    fun onCategorySelected(category: String) {
-        if (category == _selectedCategory.value) return
-        _selectedCategory.value = category
-        _uiState.update { it.copy(apps = filterFor(category)) }
-        preloadIcons(category)
-    }
-
-    private val _permissionError = MutableStateFlow(false)
-    val permissionError: StateFlow<Boolean> = _permissionError.asStateFlow()
 
     fun toggleAppBlock(packageName: String) {
         val isBlocked = _uiState.value.blockedApps.contains(packageName)
@@ -104,6 +91,9 @@ class AddAppViewModel(private val context: Context, private val mode: String = "
             _permissionError.update { true }
         }
     }
+
+    private val _permissionError = MutableStateFlow(false)
+    val permissionError: StateFlow<Boolean> = _permissionError.asStateFlow()
 
     fun clearPermissionError() {
         _permissionError.update { false }

@@ -1,6 +1,7 @@
 package org.example.project.ui
 
 import android.app.Activity
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
@@ -20,14 +21,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -73,6 +78,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -197,9 +205,11 @@ fun FocusFortressScreen(navController: NavHostController, onMenuClick: () -> Uni
             .fillMaxSize()
             .background(KalliorColors.SecondaryBackground)
             .verticalScroll(scrollState)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(horizontal = 24.dp),
     ) {
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(16.dp))
         MenuButton(onClick = onMenuClick)
         Spacer(Modifier.height(40.dp))
 
@@ -310,7 +320,19 @@ fun FocusFortressScreen(navController: NavHostController, onMenuClick: () -> Uni
             onDismissRequest = { showAlwaysOnNudge = false },
             shape = RoundedCornerShape(20.dp),
             containerColor = KalliorColors.PrimaryLayer,
-            title = { Text("Keep blocking always on", color = KalliorColors.NormalText) },
+            title = {
+                val view = LocalView.current
+                SideEffect {
+                    val window = (view.parent as? DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            window.isNavigationBarContrastEnforced = false
+                        }
+                    }
+                }
+                Text("Keep blocking always on", color = KalliorColors.NormalText)
+            },
             text = {
                 Text(
                     "For blocking to survive app restarts and background cleanup, tap the gear " +
@@ -682,7 +704,19 @@ private fun RateDialog(currentRate: Float, onDismiss: () -> Unit, onSave: (Float
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(20.dp),
         containerColor = KalliorColors.PrimaryLayer,
-        title = { Text("Set earning rate", color = KalliorColors.NormalText) },
+        title = {
+            val view = LocalView.current
+            SideEffect {
+                val window = (view.parent as? DialogWindowProvider)?.window
+                if (window != null) {
+                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        window.isNavigationBarContrastEnforced = false
+                    }
+                }
+            }
+            Text("Set earning rate", color = KalliorColors.NormalText)
+        },
         text = {
             OutlinedTextField(
                 value = value,
@@ -733,7 +767,19 @@ fun BlockedWebsitesDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(20.dp),
         containerColor = KalliorColors.PrimaryLayer,
-        title = { Text("Limited Websites", color = KalliorColors.NormalText, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold) },
+        title = {
+            val view = LocalView.current
+            SideEffect {
+                val window = (view.parent as? DialogWindowProvider)?.window
+                if (window != null) {
+                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        window.isNavigationBarContrastEnforced = false
+                    }
+                }
+            }
+            Text("Limited Websites", color = KalliorColors.NormalText, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (websites.isEmpty()) {

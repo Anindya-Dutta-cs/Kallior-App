@@ -35,6 +35,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogWindowProvider
+import android.os.Build
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
 import kotlinx.coroutines.launch
 import org.example.project.health.HealthDependencies
 import org.example.project.health.SleepSchedule
@@ -148,7 +152,19 @@ fun SleepScheduleDialog(
     if (showSleepPicker) {
         TimePickerDialog(
             onDismissRequest = { showSleepPicker = false },
-            title = { Text("When do you usually sleep?") },
+            title = {
+                val view = LocalView.current
+                SideEffect {
+                    val window = (view.parent as? DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            window.isNavigationBarContrastEnforced = false
+                        }
+                    }
+                }
+                Text("When do you usually sleep?")
+            },
             confirmButton = {
                 TextButton(onClick = { showSleepPicker = false }) {
                     Text("OK", color = KalliorColors.AccentOrange)
@@ -162,7 +178,19 @@ fun SleepScheduleDialog(
     if (showWakePicker) {
         TimePickerDialog(
             onDismissRequest = { showWakePicker = false },
-            title = { Text("When do you usually wake up?") },
+            title = {
+                val view = LocalView.current
+                SideEffect {
+                    val window = (view.parent as? DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            window.isNavigationBarContrastEnforced = false
+                        }
+                    }
+                }
+                Text("When do you usually wake up?")
+            },
             confirmButton = {
                 TextButton(onClick = { showWakePicker = false }) {
                     Text("OK", color = KalliorColors.AccentOrange)
@@ -178,6 +206,16 @@ fun SleepScheduleDialog(
         shape = RoundedCornerShape(20.dp),
         containerColor = KalliorColors.PrimaryLayer,
         title = {
+            val view = LocalView.current
+            SideEffect {
+                val window = (view.parent as? DialogWindowProvider)?.window
+                if (window != null) {
+                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        window.isNavigationBarContrastEnforced = false
+                    }
+                }
+            }
             Text(
                 text = "Sleep Schedule",
                 color = KalliorColors.NormalText,

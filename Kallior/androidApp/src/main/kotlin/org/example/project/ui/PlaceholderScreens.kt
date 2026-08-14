@@ -13,6 +13,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 
 @Composable
 fun PlaceholderScreen(title: String, onMenuClick: () -> Unit) {
@@ -20,6 +24,8 @@ fun PlaceholderScreen(title: String, onMenuClick: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(KalliorColors.SecondaryBackground)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
         Row(
             modifier = Modifier

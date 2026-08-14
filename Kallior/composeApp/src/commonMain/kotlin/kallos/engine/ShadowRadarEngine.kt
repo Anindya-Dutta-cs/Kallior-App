@@ -16,6 +16,9 @@ object ShadowRadarEngine {
 
     private const val TOP_N_FOR_AVERAGE = 3
 
+    /** Days of user scores a shadow field's history spans. */
+    private const val HISTORY_WINDOW_DAYS = 4
+
     fun computeShadowScores(
         userScores: RadarScores,
         snapshots: List<DailyMetricSnapshot>,
@@ -58,19 +61,20 @@ object ShadowRadarEngine {
 
     /**
      * The shadow's four-axis average as of the previous snapshot. Discipline,
-     * focus and health use the same top-3 history rule against that snapshot's
-     * lists. Consistency is task-based and no historical task state is kept,
-     * so today's value stands in for yesterday's.
+     * focus and health use the same top-3 history rule against the previous
+     * days' lists. Consistency is task-based and no historical task state is
+     * kept, so today's value stands in for yesterday's.
      */
     private fun yesterdayAverage(
         consistency: Double,
         snapshots: List<DailyMetricSnapshot>,
         userScores: RadarScores,
     ): Double {
-        val previous = snapshots.dropLast(1).lastOrNull() ?: return 0.0
-        val discipline = baseShadowValue(listOf(previous), { it.disciplineList }, userScores.discipline)
-        val focus = baseShadowValue(listOf(previous), { it.focusList }, userScores.focus)
-        val health = baseShadowValue(listOf(previous), { it.healthList }, userScores.health)
+        val previous = snapshots.dropLast(1)
+        if (previous.isEmpty()) return 0.0
+        val discipline = baseShadowValue(previous, { it.disciplineList }, userScores.discipline)
+        val focus = baseShadowValue(previous, { it.focusList }, userScores.focus)
+        val health = baseShadowValue(previous, { it.healthList }, userScores.health)
         return (consistency + discipline + focus + health) / 4.0
     }
 
@@ -81,14 +85,21 @@ object ShadowRadarEngine {
         return (todayAvg / denominator) * 100.0
     }
 
+    /**
+     * Average of the top 3 scores of a field across the last
+     * [HISTORY_WINDOW_DAYS] snapshots. Each daily snapshot stores that day's
+     * score(s) in its field list, so the combined lists span 4 days of the
+     * user's scores. Falls back to the user's current score only when no
+     * history exists yet.
+     */
     private fun baseShadowValue(
         snapshots: List<DailyMetricSnapshot>,
         selector: (DailyMetricSnapshot) -> List<Double>,
         fallback: Double,
     ): Double {
-        val list = snapshots.lastOrNull()?.let(selector).orEmpty()
-        if (list.isEmpty()) return fallback
-        val top = list.sortedDescending().take(TOP_N_FOR_AVERAGE)
+        val values = snapshots.takeLast(HISTORY_WINDOW_DAYS).flatMap { selector(it) }
+        if (values.isEmpty()) return fallback
+        val top = values.sortedDescending().take(TOP_N_FOR_AVERAGE)
         val average = top.average()
         return average.roundToInt().toDouble()
     }

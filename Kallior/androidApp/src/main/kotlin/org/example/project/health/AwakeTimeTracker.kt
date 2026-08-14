@@ -56,6 +56,9 @@ class AwakeTimeTracker(
     /**
      * Periodic tick — if the sleep window has ended while the phone is
      * still in use, flush the current interval clipped to the window end.
+     * While still inside the window, checkpoint the running session so a
+     * process kill cannot lose the whole interval (the repository merges
+     * the fragments on read).
      */
     suspend fun onTick(now: Instant, schedule: SleepSchedule?) {
         if (schedule == null) return
@@ -64,6 +67,11 @@ class AwakeTimeTracker(
         if (!window.contains(now)) {
             persistInterval(start, window.end.coerceAtMost(now), window)
             trackingStart = null
+            return
+        }
+        if (Duration.between(start, now) >= CHECKPOINT_EVERY) {
+            persistInterval(start, now, window)
+            trackingStart = now
         }
     }
 
@@ -89,5 +97,10 @@ class AwakeTimeTracker(
                 source = "SCREEN_EVENTS",
             )
         )
+    }
+
+    private companion object {
+        /** How often an in-progress session is persisted as a checkpoint. */
+        val CHECKPOINT_EVERY: Duration = Duration.ofMinutes(1)
     }
 }

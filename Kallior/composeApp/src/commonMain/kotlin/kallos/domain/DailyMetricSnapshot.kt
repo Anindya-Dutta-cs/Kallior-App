@@ -36,9 +36,20 @@ data class DailyMetricSnapshot(
     companion object {
         private const val MAX_LIST_LENGTH = 4
 
+        /**
+         * Stores the day's score in the field's rolling history. Each list
+         * holds one score per day: a later sync on the same day replaces
+         * that day's entry instead of appending a duplicate, so the list
+         * always spans up to [MAX_LIST_LENGTH] distinct days. Once full,
+         * the oldest (first-in) day is dropped.
+         */
         fun updateScoreList(list: List<Double>, score: Double?): List<Double> {
             val newScore = score ?: 0.0
-            return (list + newScore).takeLast(MAX_LIST_LENGTH)
+            return if (list.isEmpty()) {
+                listOf(newScore)
+            } else {
+                (list.dropLast(1) + newScore).takeLast(MAX_LIST_LENGTH)
+            }
         }
     }
 }

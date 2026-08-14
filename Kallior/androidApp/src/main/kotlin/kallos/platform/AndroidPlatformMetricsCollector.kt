@@ -45,9 +45,10 @@ class AndroidPlatformMetricsCollector : PlatformMetricsCollector {
             scheduledSleepMin = schedule?.durationHours()?.times(60.0) ?: 0.0
 
             if (sleepData.value > 0.0) {
-                // Health Connect returned actual sleep data — use that directly
-                // without subtracting phone awake time (per plan §2.2 + answers).
-                sleepMinutes = sleepData.value
+                // Health Connect returned actual sleep data. Phone usage
+                // recorded for the same sleep window is still subtracted so
+                // on-phone awake time is never counted as sleep.
+                sleepMinutes = (sleepData.value - awakeMinutes).coerceAtLeast(0.0)
                 sleepSrc = "HEALTH_CONNECT"
             } else if (schedule != null && window != null) {
                 // A schedule can be in progress. Count only the elapsed portion,
