@@ -62,7 +62,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import org.example.project.R
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -87,7 +86,7 @@ import java.io.File
 import java.util.Locale
 
 @Composable
-fun AriaAlarmScreen(onMenuClick: () -> Unit) {
+fun AriaAlarmScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -185,15 +184,8 @@ fun AriaAlarmScreen(onMenuClick: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Menu Button
-            Icon(
-                painter = painterResource(R.drawable.side_bar_button),
-                contentDescription = "Menu",
-                tint = Color.White,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clickable { onMenuClick() }
-            )
+            // Padding preserved
+            Box(modifier = Modifier.size(36.dp))
 
             Spacer(modifier = Modifier.height(40.dp))
 
@@ -549,7 +541,7 @@ private fun TimePickerDialog(
             SideEffect {
                 val window = (view.parent as? DialogWindowProvider)?.window
                 if (window != null) {
-                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    window.navigationBarColor = 0xFF161616.toInt()
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         window.isNavigationBarContrastEnforced = false
                     }

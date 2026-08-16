@@ -151,7 +151,7 @@ fun AddTaskDialog(
         SideEffect {
             val window = (view.parent as? DialogWindowProvider)?.window
             if (window != null) {
-                window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = 0xFF161616.toInt()
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     window.isNavigationBarContrastEnforced = false
                 }
@@ -381,7 +381,7 @@ fun AddReminderDialog(
         SideEffect {
             val window = (view.parent as? DialogWindowProvider)?.window
             if (window != null) {
-                window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = 0xFF161616.toInt()
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     window.isNavigationBarContrastEnforced = false
                 }

@@ -49,7 +49,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 @Composable
 fun SettingsScreen(
     gameViewModel: GameViewModel,
-    onMenuClick: () -> Unit
 ) {
     val context = LocalContext.current
     val permissionHelper = remember { HealthDependencies.healthConnectPermissionHelper(context) }
@@ -146,7 +145,7 @@ fun SettingsScreen(
             .windowInsetsPadding(WindowInsets.statusBars)
             .windowInsetsPadding(WindowInsets.navigationBars),
     ) {
-        // Top bar
+        // Top bar spacing preserved
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -156,20 +155,7 @@ fun SettingsScreen(
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(CircleShape)
-                    .background(KalliorColors.PrimaryLayer)
-                    .clickable { onMenuClick() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    modifier = Modifier.width(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Box(Modifier.fillMaxWidth().height(2.dp).background(Color.White))
-                    Box(Modifier.fillMaxWidth().height(2.dp).background(Color.White))
-                    Box(Modifier.fillMaxWidth().height(2.dp).background(Color.White))
-                }
-            }
+            )
             Spacer(Modifier.width(16.dp))
             Text(
                 text = "Settings",

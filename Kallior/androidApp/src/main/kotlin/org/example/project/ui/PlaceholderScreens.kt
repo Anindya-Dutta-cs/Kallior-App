@@ -19,7 +19,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 
 @Composable
-fun PlaceholderScreen(title: String, onMenuClick: () -> Unit) {
+fun PlaceholderScreen(title: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -35,20 +35,7 @@ fun PlaceholderScreen(title: String, onMenuClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(CircleShape)
-                    .background(KalliorColors.PrimaryLayer)
-                    .clickable { onMenuClick() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    modifier = Modifier.width(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Box(Modifier.fillMaxWidth().height(2.dp).background(Color.White))
-                    Box(Modifier.fillMaxWidth().height(2.dp).background(Color.White))
-                    Box(Modifier.fillMaxWidth().height(2.dp).background(Color.White))
-                }
-            }
+            )
         }
 
         Box(

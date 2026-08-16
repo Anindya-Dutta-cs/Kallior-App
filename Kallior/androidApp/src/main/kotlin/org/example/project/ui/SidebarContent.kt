@@ -55,7 +55,8 @@ fun SidebarContent(
                     .fillMaxWidth()
                     .height(180.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFFACACAC).copy(alpha = 0.5f)),
+                    .background(Color(0xFFACACAC).copy(alpha = 0.5f))
+                    .clickable { onItemClick("profile") },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -69,6 +70,7 @@ fun SidebarContent(
             Spacer(modifier = Modifier.height(40.dp))
 
             val navItems = listOf(
+                SidebarItem("Profile", "profile"),
                 SidebarItem("Home", "home"),
                 SidebarItem("AriaAlarm", "alarm"),
                 SidebarItem("Focus Fortress", "blocker"),

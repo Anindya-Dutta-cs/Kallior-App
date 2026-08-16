@@ -104,7 +104,7 @@ import org.example.project.WebsiteBlockerRepository
 import org.example.project.ui.Philosopher
 
 @Composable
-fun FocusFortressScreen(navController: NavHostController, onMenuClick: () -> Unit) {
+fun FocusFortressScreen(navController: NavHostController) {
     val context = LocalContext.current
     val dataFetcher = remember { PlatformDataFetcher() }
     val blockerRepository = remember { BlockerRepository(context) }
@@ -210,7 +210,8 @@ fun FocusFortressScreen(navController: NavHostController, onMenuClick: () -> Uni
             .padding(horizontal = 24.dp),
     ) {
         Spacer(Modifier.height(16.dp))
-        MenuButton(onClick = onMenuClick)
+        // Padding preserved
+        Box(modifier = Modifier.size(36.dp))
         Spacer(Modifier.height(40.dp))
 
         Text(
@@ -325,7 +326,7 @@ fun FocusFortressScreen(navController: NavHostController, onMenuClick: () -> Uni
                 SideEffect {
                     val window = (view.parent as? DialogWindowProvider)?.window
                     if (window != null) {
-                        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                        window.navigationBarColor = 0xFF161616.toInt()
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                             window.isNavigationBarContrastEnforced = false
                         }
@@ -347,18 +348,6 @@ fun FocusFortressScreen(navController: NavHostController, onMenuClick: () -> Uni
             },
         )
     }
-}
-
-@Composable
-private fun MenuButton(onClick: () -> Unit) {
-    Icon(
-        painter = painterResource(R.drawable.side_bar_button),
-        contentDescription = "Menu",
-        tint = KalliorColors.NormalText,
-        modifier = Modifier
-            .size(36.dp)
-            .clickable(onClick = onClick)
-    )
 }
 
 @Composable
@@ -709,7 +698,7 @@ private fun RateDialog(currentRate: Float, onDismiss: () -> Unit, onSave: (Float
             SideEffect {
                 val window = (view.parent as? DialogWindowProvider)?.window
                 if (window != null) {
-                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    window.navigationBarColor = 0xFF161616.toInt()
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         window.isNavigationBarContrastEnforced = false
                     }
@@ -772,7 +761,7 @@ fun BlockedWebsitesDialog(
             SideEffect {
                 val window = (view.parent as? DialogWindowProvider)?.window
                 if (window != null) {
-                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    window.navigationBarColor = 0xFF161616.toInt()
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         window.isNavigationBarContrastEnforced = false
                     }

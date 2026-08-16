@@ -130,7 +130,6 @@ import androidx.compose.ui.platform.LocalView
 fun HomeScreen(
     navController: NavHostController,
     gameViewModel: GameViewModel,
-    onMenuClick: () -> Unit,
 ) {
     val shadowHomeState by gameViewModel.shadowHomeState.collectAsState()
     var showTaskDialog by remember { mutableStateOf(false) }
@@ -267,9 +266,6 @@ fun HomeScreen(
                 slideEnter = slideEnter,
                 radarIcons = radarIcons,
                 scrollState = scrollState,
-                onClose = {
-                    coroutineScope.launch { draggableState.animateTo(DragValue.Closed) }
-                }
             )
         }
 
@@ -315,15 +311,6 @@ fun HomeScreen(
                     }
                 }
         ) {
-            TopNavBar(
-                onMenuClick = onMenuClick,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .zIndex(1f)
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(top = 16.dp),
-            )
-
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -449,7 +436,7 @@ fun DeleteConfirmationDialog(
             SideEffect {
                 val window = (view.parent as? DialogWindowProvider)?.window
                 if (window != null) {
-                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    window.navigationBarColor = 0xFF161616.toInt()
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         window.isNavigationBarContrastEnforced = false
                     }
@@ -472,36 +459,6 @@ fun DeleteConfirmationDialog(
         titleContentColor = KalliorColors.NormalText,
         textContentColor = KalliorColors.MutedText,
     )
-}
-
-@Composable
-private fun TopNavBar(
-    onMenuClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 36.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.side_bar_button),
-            contentDescription = "Menu",
-            tint = Color.White,
-            modifier = Modifier
-                .size(36.dp)
-                .clickable { onMenuClick() }
-        )
-
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(KalliorColors.PrimaryLayer),
-        )
-    }
 }
 
 @Composable
@@ -1166,7 +1123,6 @@ fun BoxScope.ShadowOverlay(
     slideEnter: androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.IntOffset>,
     radarIcons: List<androidx.compose.ui.graphics.painter.Painter>,
     scrollState: androidx.compose.foundation.ScrollState,
-    onClose: () -> Unit
 ) {
     val scale by animateFloatAsState(
         targetValue = (1f - scrollState.value * 0.0005f).coerceIn(0.8f, 1f),
@@ -1178,7 +1134,7 @@ fun BoxScope.ShadowOverlay(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Top Bar - Aligned with TopNavBar
+        // Top Bar - Spacing preserved
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1190,14 +1146,7 @@ fun BoxScope.ShadowOverlay(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                painter = painterResource(R.drawable.side_bar_button),
-                contentDescription = "Close Shadow Homescreen",
-                tint = ShadowPurple,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clickable { onClose() }
-            )
+            Box(modifier = Modifier.size(36.dp))
 
             Box(
                 modifier = Modifier
