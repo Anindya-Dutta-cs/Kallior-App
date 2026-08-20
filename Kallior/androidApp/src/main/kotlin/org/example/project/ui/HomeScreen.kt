@@ -1,13 +1,9 @@
 package org.example.project.ui
 
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -19,7 +15,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Spacer
@@ -27,12 +22,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,7 +47,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,7 +54,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -71,7 +61,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
@@ -95,6 +84,7 @@ import kallos.model.Task
 import kallos.model.TaskStatus
 import kallos.viewmodel.GameViewModel
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 import org.example.project.R
 import kallos.model.Category
 import java.text.SimpleDateFormat
@@ -108,19 +98,11 @@ import kallos.viewmodel.TaskUi
 import org.example.project.ui.theme.*
 import kallos.engine.ShadowTaskState
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.ui.semantics.semantics
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.shape.GenericShape
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
@@ -161,7 +143,6 @@ fun HomeScreen(
         targetValue = (1f - scrollState.value * 0.0005f).coerceIn(0.8f, 1f),
         label = "radarScale",
     )
-    val slideEnter = tween<IntOffset>(300, easing = FastOutSlowInEasing)
 
     // Remap the backend RadarScores ([Consistency, Discipline, Focus, Health, Resilience])
     // into the chart's vertex order ([Focus, Discipline, Health, Resilience, Consistency]).
@@ -177,8 +158,8 @@ fun HomeScreen(
     )
 
     // Shadow Reveal State
+    val screenWidthPx = context.resources.displayMetrics.widthPixels.toFloat()
     val density = LocalDensity.current
-    val screenWidthPx = with(density) { context.resources.displayMetrics.widthPixels.toFloat() }
     val coroutineScope = rememberCoroutineScope()
 
     val draggableState = remember {
@@ -191,7 +172,7 @@ fun HomeScreen(
             positionalThreshold = { totalDistance -> totalDistance * 0.5f },
             velocityThreshold = { with(density) { 900.dp.toPx() } },
             snapAnimationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 380f),
-            decayAnimationSpec = androidx.compose.animation.core.exponentialDecay()
+            decayAnimationSpec = exponentialDecay()
         )
     }
 
@@ -227,13 +208,12 @@ fun HomeScreen(
                 .zIndex(if (shadowRevealed) 1f else 0f)
                 .drawWithContent {
                     val scope = this
-                    val clipX = currentOffset
-                    val progress = (clipX / screenWidthPx).coerceIn(0f, 1f)
+                    val progress = (currentOffset / screenWidthPx).coerceIn(0f, 1f)
                     val distortIntensity = (1f - kotlin.math.abs(progress - 0.5f) * 2f).coerceIn(0f, 1f)
                     val glitchWidth = 32.dp.toPx() * distortIntensity
 
                     // 1. Draw main shadow content (revealed from boundary)
-                    clipRect(left = clipX + glitchWidth) {
+                    clipRect(left = currentOffset + glitchWidth) {
                         scope.drawContent()
                     }
 
@@ -245,8 +225,8 @@ fun HomeScreen(
                             val y = i * segmentHeight
                             val jitter = (if (i % 3 == 0) -10f else if (i % 7 == 0) 15f else -5f) * distortIntensity
                             clipRect(
-                                left = clipX,
-                                right = clipX + glitchWidth,
+                                left = currentOffset,
+                                right = currentOffset + glitchWidth,
                                 top = y,
                                 bottom = y + segmentHeight
                             ) {
@@ -260,10 +240,9 @@ fun HomeScreen(
                     }
                 }
         ) {
-            ShadowOverlay(
+                ShadowOverlay(
                 state = shadowHomeState,
                 reminders = gameViewModel.reminders,
-                slideEnter = slideEnter,
                 radarIcons = radarIcons,
                 scrollState = scrollState,
             )
@@ -275,13 +254,12 @@ fun HomeScreen(
                 .fillMaxSize()
                 .drawWithContent {
                     val scope = this
-                    val clipX = currentOffset
-                    val progress = (clipX / screenWidthPx).coerceIn(0f, 1f)
+                    val progress = (currentOffset / screenWidthPx).coerceIn(0f, 1f)
                     val distortIntensity = (1f - kotlin.math.abs(progress - 0.5f) * 2f).coerceIn(0f, 1f)
                     val glitchWidth = 32.dp.toPx() * distortIntensity
                     
                     // 1. Draw main clean content (clipped to reveal edge)
-                    clipRect(right = clipX - glitchWidth) {
+                    clipRect(right = currentOffset - glitchWidth) {
                         scope.drawContent()
                     }
 
@@ -296,8 +274,8 @@ fun HomeScreen(
                             val jitter = (if (i % 4 == 0) 12f else if (i % 7 == 0) -8f else 4f) * distortIntensity
                             
                             clipRect(
-                                left = clipX - glitchWidth,
-                                right = clipX,
+                                left = currentOffset - glitchWidth,
+                                right = currentOffset,
                                 top = y,
                                 bottom = y + segmentHeight
                             ) {
@@ -352,7 +330,6 @@ fun HomeScreen(
                             gameViewModel.deleteTask(id)
                         }
                     },
-                    slideEnter = slideEnter,
                 )
             }
         }
@@ -464,17 +441,16 @@ fun DeleteConfirmationDialog(
 @Composable
 private fun PrimaryLayerContent(
     gameViewModel: GameViewModel,
-    reminders: List<kallos.model.Remainder>,
+    reminders: List<Remainder>,
     onAddTask: () -> Unit,
     onAddReminder: () -> Unit,
     onRemoveReminder: (String) -> Unit,
     onBadgesTap: () -> Unit,
     onCompleteTask: (String) -> Unit,
     onDeleteTask: (String) -> Unit,
-    slideEnter: androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.IntOffset>,
 ) {
     SharedHomeSections(
-        tasks = gameViewModel.tasks.map { TaskUi(it, ShadowTaskState.PENDING, it.status == kallos.model.TaskStatus.Completed) },
+        tasks = gameViewModel.tasks.map { TaskUi(it, ShadowTaskState.PENDING, it.status == TaskStatus.Completed) },
         reminders = reminders,
         isShadow = false,
         onAddTask = onAddTask,
@@ -483,14 +459,13 @@ private fun PrimaryLayerContent(
         onBadgesTap = onBadgesTap,
         onCompleteTask = onCompleteTask,
         onDeleteTask = onDeleteTask,
-        slideEnter = slideEnter
     )
 }
 
 @Composable
 private fun SharedHomeSections(
     tasks: List<TaskUi>,
-    reminders: List<kallos.model.Remainder>,
+    reminders: List<Remainder>,
     isShadow: Boolean,
     onAddTask: () -> Unit,
     onAddReminder: () -> Unit,
@@ -498,24 +473,31 @@ private fun SharedHomeSections(
     onBadgesTap: () -> Unit,
     onCompleteTask: (String) -> Unit,
     onDeleteTask: (String) -> Unit,
-    slideEnter: androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.IntOffset>,
 ) {
-    Box(modifier = Modifier.fillMaxWidth()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val cornerRadius = this.maxWidth * 0.225f
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 150.dp, topEnd = 150.dp))
+                .clip(RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius))
                 .background(
-                    androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = if (isShadow) {
-                            listOf(ShadowGradientTop, ShadowGradientBot)
+                    Brush.verticalGradient(
+                        colorStops = if (isShadow) {
+                            arrayOf(
+                                0.0f to ShadowGradientTop,
+                                0.15f to ShadowGradientBot,
+                                1.0f to ShadowGradientBot
+                            )
                         } else {
-                            listOf(KalliorColors.DarkBrown, Color.Black)
+                            arrayOf(
+                                0.0f to KalliorColors.DarkBrown,
+                                0.15f to Color.Black,
+                                1.0f to Color.Black
+                            )
                         }
                     )
                 )
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(top = 130.dp, bottom = 50.dp),
+                .padding(top = 130.dp, bottom = 140.dp),
         ) {
             Column(
                 modifier = Modifier
@@ -541,7 +523,7 @@ private fun SharedHomeSections(
                     buttonGlyphColor = if (isShadow) ShadowButtonGlyph else Color.White,
                     enabled = !isShadow,
                 ) {
-                    val ordered = tasks.sortedWith(compareBy { it.task.status == kallos.model.TaskStatus.Completed })
+                    val ordered = tasks.sortedWith(compareBy { it.task.status == TaskStatus.Completed })
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -595,14 +577,6 @@ private fun SharedHomeSections(
             }
         }
     }
-}
-
-/** Generous height so the nested [LazyColumn] lays out all rows without an inner scroll. */
-private fun tasksHeight(count: Int): androidx.compose.ui.unit.Dp {
-    if (count <= 0) return 0.dp
-    val row = 72.dp
-    val gap = 4.dp
-    return row * count + gap * (count - 1) + 16.dp
 }
 
 @Composable
@@ -671,12 +645,12 @@ private enum class DragValue { Closed, Open }
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SwipeableTaskItem(
-    task: kallos.model.Task,
+    task: Task,
+    modifier: Modifier = Modifier,
     taskUi: TaskUi? = null,
     onComplete: () -> Unit,
     onDelete: () -> Unit,
     interactionsEnabled: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val completed = taskUi?.shadowCompleted ?: (task.status == kallos.model.TaskStatus.Completed)
     if (!interactionsEnabled || completed) {
@@ -743,7 +717,7 @@ private fun SwipeableTaskItem(
 
         TaskItemRow(
             task = task,
-            completed = completed,
+            completed = false,
             onComplete = onComplete,
             ringAlpha = 1f - ringFraction,
             modifier = Modifier
@@ -878,7 +852,7 @@ private fun rememberNowMs(task: Task): Long {
                 val cur = Clock.System.now().toEpochMilliseconds()
                 nowMs = cur
                 if (cur - shelvedAtMs >= windowMs) break
-                delay(1000)
+                delay(1.seconds)
             }
         } else {
             nowMs = Clock.System.now().toEpochMilliseconds()
@@ -1033,21 +1007,13 @@ private fun formatReminderTime(time: kotlin.time.Instant): String {
     return SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(date)
 }
 
-/** Generous height so the nested [LazyColumn] lays out all rows without an inner scroll. */
-private fun remindersHeight(count: Int): androidx.compose.ui.unit.Dp {
-    if (count <= 0) return 0.dp
-    val row = 120.dp
-    val gap = 4.dp
-    return row * count + gap * (count - 1) + 16.dp
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SwipeableReminderItem(
     reminder: Remainder,
+    modifier: Modifier = Modifier,
     onDelete: () -> Unit,
     interactionsEnabled: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     if (!interactionsEnabled) {
         // Read-only row (shadow side): no swipe-to-delete.
@@ -1115,12 +1081,10 @@ private fun SwipeableReminderItem(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun BoxScope.ShadowOverlay(
+fun ShadowOverlay(
     state: kallos.viewmodel.ShadowHomeState,
-    reminders: List<kallos.model.Remainder>,
-    slideEnter: androidx.compose.animation.core.FiniteAnimationSpec<androidx.compose.ui.unit.IntOffset>,
+    reminders: List<Remainder>,
     radarIcons: List<androidx.compose.ui.graphics.painter.Painter>,
     scrollState: androidx.compose.foundation.ScrollState,
 ) {
@@ -1194,7 +1158,6 @@ fun BoxScope.ShadowOverlay(
                 onBadgesTap = { },
                 onCompleteTask = { },
                 onDeleteTask = { },
-                slideEnter = slideEnter
             )
         }
     }

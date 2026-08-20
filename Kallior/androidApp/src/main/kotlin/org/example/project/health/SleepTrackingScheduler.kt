@@ -15,6 +15,7 @@ import java.time.Instant
 object SleepTrackingScheduler {
     private const val START_REQUEST_CODE = 4_201
     private const val STOP_REQUEST_CODE = 4_202
+    private const val BEDTIME_REMINDER_REQUEST_CODE = 4_203
 
     suspend fun rescheduleFromStoredSchedule(context: Context) {
         val schedule = HealthDependencies.sleepScheduleStore(context).currentSchedule()
@@ -35,8 +36,16 @@ object SleepTrackingScheduler {
             scheduleAlarm(appContext, SleepTrackingAlarmReceiver.ACTION_STOP, window.end)
             val next = calculator.currentOrNextSleepWindow(window.end.plusMillis(1), schedule)
             scheduleAlarm(appContext, SleepTrackingAlarmReceiver.ACTION_START, next.start)
+            val nextBedtime = next.start.minus(java.time.Duration.ofMinutes(5))
+            if (nextBedtime.isAfter(now)) {
+                scheduleAlarm(appContext, SleepTrackingAlarmReceiver.ACTION_BEDTIME_REMINDER, nextBedtime)
+            }
         } else {
             scheduleAlarm(appContext, SleepTrackingAlarmReceiver.ACTION_START, window.start)
+            val bedtime = window.start.minus(java.time.Duration.ofMinutes(5))
+            if (bedtime.isAfter(now)) {
+                scheduleAlarm(appContext, SleepTrackingAlarmReceiver.ACTION_BEDTIME_REMINDER, bedtime)
+            }
         }
     }
 
@@ -49,6 +58,7 @@ object SleepTrackingScheduler {
         val manager = context.getSystemService(AlarmManager::class.java) ?: return
         manager.cancel(pendingIntent(context, SleepTrackingAlarmReceiver.ACTION_START))
         manager.cancel(pendingIntent(context, SleepTrackingAlarmReceiver.ACTION_STOP))
+        manager.cancel(pendingIntent(context, SleepTrackingAlarmReceiver.ACTION_BEDTIME_REMINDER))
         context.stopService(Intent(context, SleepTrackingForegroundService::class.java))
     }
 
@@ -77,10 +87,11 @@ object SleepTrackingScheduler {
     }
 
     private fun pendingIntent(context: Context, action: String): PendingIntent {
-        val requestCode = if (action == SleepTrackingAlarmReceiver.ACTION_START) {
-            START_REQUEST_CODE
-        } else {
-            STOP_REQUEST_CODE
+        val requestCode = when (action) {
+            SleepTrackingAlarmReceiver.ACTION_START -> START_REQUEST_CODE
+            SleepTrackingAlarmReceiver.ACTION_STOP -> STOP_REQUEST_CODE
+            SleepTrackingAlarmReceiver.ACTION_BEDTIME_REMINDER -> BEDTIME_REMINDER_REQUEST_CODE
+            else -> START_REQUEST_CODE
         }
         return PendingIntent.getBroadcast(
             context,

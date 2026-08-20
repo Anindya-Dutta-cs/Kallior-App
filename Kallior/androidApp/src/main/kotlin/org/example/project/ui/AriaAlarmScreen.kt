@@ -179,7 +179,6 @@ fun AriaAlarmScreen() {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(horizontal = 36.dp)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -447,7 +446,7 @@ fun AriaAlarmScreen() {
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(140.dp))
         }
     }
 

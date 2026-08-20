@@ -52,7 +52,6 @@ import org.example.project.AddAppViewModel
 import org.example.project.InstalledAppInfo
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 
 @Composable
@@ -69,7 +68,6 @@ fun AddAppScreen(navController: NavHostController, mode: String = "BLOCKER") {
             .fillMaxSize()
             .background(KalliorColors.SecondaryBackground)
             .windowInsetsPadding(WindowInsets.statusBars)
-            .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(horizontal = 24.dp),
     ) {
         Spacer(modifier = Modifier.height(16.dp))
@@ -134,7 +132,7 @@ fun AddAppScreen(navController: NavHostController, mode: String = "BLOCKER") {
         LazyColumn(
             modifier = Modifier.fillMaxWidth().weight(1f),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = 140.dp)
         ) {
             items(uiState.categories) { category ->
                 val apps = uiState.appsByCategory[category] ?: emptyList()

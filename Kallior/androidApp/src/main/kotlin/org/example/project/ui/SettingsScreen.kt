@@ -142,8 +142,7 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(KalliorColors.SecondaryBackground)
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .windowInsetsPadding(WindowInsets.navigationBars),
+            .windowInsetsPadding(WindowInsets.statusBars),
     ) {
         // Top bar spacing preserved
         Row(
@@ -262,7 +261,7 @@ fun SettingsScreen(
                 onClick = { showSleepDialog = true },
             )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(140.dp))
         }
     }
 

@@ -45,7 +45,6 @@ fun BadgesScreen(navController: NavHostController) {
             .fillMaxSize()
             .background(KalliorColors.SecondaryBackground)
             .windowInsetsPadding(WindowInsets.statusBars)
-            .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(24.dp),
     ) {
         Row(
@@ -100,5 +99,6 @@ fun BadgesScreen(navController: NavHostController) {
                 )
             }
         }
+        Spacer(modifier = Modifier.height(140.dp))
     }
 }

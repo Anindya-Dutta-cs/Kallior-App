@@ -48,5 +48,6 @@ dependencies {
     implementation(libs.javax.inject)
     implementation(libs.androidx.work.runtime)
     implementation(libs.kotlinx.serialization.json)
-    testImplementation(libs.kotlin.test)
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    testImplementation(libs.kotlinx.datetime)
 }

@@ -25,7 +25,6 @@ fun PlaceholderScreen(title: String) {
             .fillMaxSize()
             .background(KalliorColors.SecondaryBackground)
             .windowInsetsPadding(WindowInsets.statusBars)
-            .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
         Row(
             modifier = Modifier
@@ -56,5 +55,6 @@ fun PlaceholderScreen(title: String) {
                 )
             }
         }
+        Spacer(modifier = Modifier.height(140.dp))
     }
 }

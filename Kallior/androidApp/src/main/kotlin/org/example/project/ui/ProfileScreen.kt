@@ -58,7 +58,6 @@ fun ProfileScreen(
             .background(KalliorColors.SecondaryBackground)
             .verticalScroll(scrollState)
             .windowInsetsPadding(WindowInsets.statusBars)
-            .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(horizontal = 36.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -148,7 +147,7 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(20.dp))
         ProfileActionButton(text = "Report a bug", onClick = {})
         
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(140.dp))
     }
 }
 

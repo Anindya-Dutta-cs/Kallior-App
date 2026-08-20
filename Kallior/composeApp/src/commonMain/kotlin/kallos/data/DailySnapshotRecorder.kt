@@ -40,6 +40,7 @@ object DailySnapshotRecorder {
             focusList = focusList,
             healthList = healthList,
             resilienceList = resilienceList,
+            todayAvg = yestAvg,
             yestAvg = yestAvg
         )
 

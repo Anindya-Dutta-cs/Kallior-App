@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -119,24 +118,22 @@ fun KalliorNavGraph(navController: NavHostController) {
             }
         )
 
-        // More Menu Expansion - Sitting slightly above the nav bar
+        // More Menu Expansion - Panel is transparent, items are styled like the nav bar
         AnimatedVisibility(
             visible = showMoreMenu,
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
             exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 100.dp)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(bottom = 68.dp) // Gap between bottom tab and nav bar top will be 8.dp (same as spacedBy)
                 .zIndex(2f)
         ) {
             Column(
                 modifier = Modifier
                     .width(180.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(KalliorColors.PrimaryLayer)
-                    .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(24.dp))
                     .padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 MoreMenuItem("Profile", onClick = {
                     showMoreMenu = false
@@ -260,18 +257,24 @@ fun NavTab(
 
 @Composable
 fun MoreMenuItem(label: String, onClick: () -> Unit) {
+    val itemHeight = 48.dp
+    val radius = itemHeight * 0.225f
+    
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(KalliorColors.ForegroundCard)
+            .height(itemHeight)
+            .clip(RoundedCornerShape(radius))
+            .background(Color(0xFF161616))
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 20.dp),
+        contentAlignment = Alignment.CenterStart
     ) {
         Text(
             text = label,
             color = KalliorColors.NormalText,
-            fontSize = 16.sp
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium
         )
     }
 }

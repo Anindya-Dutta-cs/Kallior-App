@@ -206,7 +206,6 @@ fun FocusFortressScreen(navController: NavHostController) {
             .background(KalliorColors.SecondaryBackground)
             .verticalScroll(scrollState)
             .windowInsetsPadding(WindowInsets.statusBars)
-            .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(horizontal = 24.dp),
     ) {
         Spacer(Modifier.height(16.dp))
@@ -305,7 +304,7 @@ fun FocusFortressScreen(navController: NavHostController) {
             ratePerSecond = ratePerSecond,
             onRateChange = { rate -> scope.launch { settingsRepository.setRatePerSecond(rate) } },
         )
-        Spacer(Modifier.height(42.dp))
+        Spacer(Modifier.height(140.dp))
     }
 
     if (showWebsitesDialog) {

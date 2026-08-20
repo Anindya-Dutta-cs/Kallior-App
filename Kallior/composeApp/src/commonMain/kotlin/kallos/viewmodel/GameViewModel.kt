@@ -263,8 +263,8 @@ class GameViewModel(
         totalTasks = tasksScheduled
         completedTasks = tasksCompleted
         val metrics = metricsCollector.collect()
-        val yesterday = today.minus(DatePeriod(days = 1))
-        val yestAvg = repository.snapshots.find { it.date == yesterday }?.todayAvg ?: 0.0
+        val prevSnapshot = repository.snapshots.filter { it.date < today }.maxByOrNull { it.date }
+        val yestAvg = prevSnapshot?.let { if (it.todayAvg > 0.0) it.todayAvg else it.yestAvg } ?: 0.0
         val sleepScore = RadarChartEngine.computeSleepScore(metrics.minutesSlept)
         val stepScore = RadarChartEngine.computeStepScore(metrics.steps)
         val excessEntertainment = metrics.entertainmentMinutes - 90.0
