@@ -43,15 +43,21 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -129,7 +135,7 @@ fun FocusFortressScreen(navController: NavHostController) {
 
     val ratePerSecond by settingsRepository.ratePerSecondFlow.collectAsState(initial = 0.005f)
     var showAlwaysOnNudge by remember { mutableStateOf(false) }
-    var showWebsitesDialog by remember { mutableStateOf(false) }
+    var showWebsitesSheet by remember { mutableStateOf(false) }
 
     var hasUsage by remember { mutableStateOf(permissionManager.hasUsageStatsPermission()) }
     var hasOverlay by remember { mutableStateOf(permissionManager.hasOverlayPermission()) }
@@ -289,7 +295,7 @@ fun FocusFortressScreen(navController: NavHostController) {
                 title = "Limited Websites",
                 subtitle = "${blockedWebsites.size} Websites Blocked",
                 iconRes = R.drawable.websites_blocked,
-                onClick = { showWebsitesDialog = true },
+                onClick = { showWebsitesSheet = true },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -307,12 +313,14 @@ fun FocusFortressScreen(navController: NavHostController) {
         Spacer(Modifier.height(140.dp))
     }
 
-    if (showWebsitesDialog) {
-        BlockedWebsitesDialog(
+    if (showWebsitesSheet) {
+        LimitedWebsitesBottomSheet(
             websites = blockedWebsites,
-            onDismiss = { showWebsitesDialog = false },
-            onAdd = { website -> scope.launch { controller.addBlockedWebsite(website) } },
-            onRemove = { website -> scope.launch { controller.removeBlockedWebsite(website) } },
+            onDismiss = { showWebsitesSheet = false },
+            onEditClick = {
+                showWebsitesSheet = false
+                navController.navigate("addWebsites")
+            },
         )
     }
     if (showAlwaysOnNudge) {
@@ -742,64 +750,169 @@ private fun PermissionRow(text: String, onClick: () -> Unit) {
     ) { Text(text, color = KalliorColors.AccentOrange, style = MaterialTheme.typography.bodyMedium) }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BlockedWebsitesDialog(
+fun LimitedWebsitesBottomSheet(
     websites: List<String>,
     onDismiss: () -> Unit,
-    onAdd: (String) -> Unit,
-    onRemove: (String) -> Unit,
+    onEditClick: () -> Unit,
 ) {
-    var rawInput by remember { mutableStateOf("") }
-    var showError by remember { mutableStateOf(false) }
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var isVisible by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        containerColor = KalliorColors.PrimaryLayer,
-        title = {
-            val view = LocalView.current
-            SideEffect {
-                val window = (view.parent as? DialogWindowProvider)?.window
-                if (window != null) {
-                    window.navigationBarColor = 0xFF161616.toInt()
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        window.isNavigationBarContrastEnforced = false
+        sheetState = sheetState,
+        containerColor = KalliorColors.SecondaryBackground,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 12.dp)
+                    .size(width = 40.dp, height = 4.dp)
+                    .clip(CircleShape)
+                    .background(KalliorColors.RadarLine)
+            )
+        },
+        shape = RoundedCornerShape(topStart = 15.3.dp, topEnd = 15.3.dp),
+    ) {
+        val view = LocalView.current
+        SideEffect {
+            val window = (view.parent as? DialogWindowProvider)?.window
+                ?: (view.context as? Activity)?.window
+            if (window != null) {
+                window.statusBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = 0xFF161616.toInt()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    window.isNavigationBarContrastEnforced = false
+                }
+                val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                insetsController.isAppearanceLightStatusBars = false
+                insetsController.isAppearanceLightNavigationBars = false
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            // Header Row: Title, Visibility Toggle, Edit Button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Limited Websites",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontFamily = Philosopher,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 24.sp,
+                    ),
+                    color = KalliorColors.NormalText,
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Visibility Toggle Button
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(KalliorColors.PrimaryLayer)
+                            .border(1.dp, KalliorColors.RadarLine, CircleShape)
+                            .clickable { isVisible = !isVisible },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (isVisible) "Hide website names" else "Show website names",
+                            tint = KalliorColors.NormalText,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    // Edit Button
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(KalliorColors.AccentOrange)
+                            .clickable { onEditClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit websites",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
-            Text("Limited Websites", color = KalliorColors.NormalText, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (websites.isEmpty()) {
-                    Text("No websites limited yet.", color = KalliorColors.MutedText)
-                } else {
-                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(websites) { site ->
-                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(KalliorColors.ForegroundCard).padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(site, color = KalliorColors.NormalText, modifier = Modifier.weight(1f))
-                                IconButton(onClick = { onRemove(site) }) { Icon(Icons.Default.Delete, "Remove $site", tint = KalliorColors.AccentOrange) }
-                            }
+
+            HorizontalDivider(
+                color = KalliorColors.RadarLine,
+                thickness = 1.dp,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Strictly Scrollable Website Cards List
+            if (websites.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No websites limited yet.",
+                        color = KalliorColors.MutedText,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(websites) { site ->
+                        val displayText = if (isVisible) site else "•".repeat(site.length.coerceAtLeast(10))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(KalliorColors.ForegroundCard),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = displayText,
+                                color = KalliorColors.NormalText,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 16.sp
+                                ),
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
-                OutlinedTextField(value = rawInput, onValueChange = { rawInput = it; showError = false }, label = { Text("Add a website") }, placeholder = { Text("e.g. facebook.com") }, singleLine = true, isError = showError, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), colors = dialogFieldColors(), modifier = Modifier.fillMaxWidth())
-                if (showError) Text("Enter a valid website", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
             }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                val normalized = normalizeWebsite(rawInput)
-                if (normalized.isBlank()) showError = true else {
-                    onAdd(normalized)
-                    rawInput = ""
-                }
-            }) { Text("Add", color = KalliorColors.AccentOrange) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Done", color = KalliorColors.MutedText) } },
-    )
+        }
+    }
 }
 
-private fun normalizeWebsite(input: String): String = input.trim().lowercase()
+fun normalizeWebsite(input: String): String = input.trim().lowercase()
     .removePrefix("https://")
     .removePrefix("http://")
     .removePrefix("www.")

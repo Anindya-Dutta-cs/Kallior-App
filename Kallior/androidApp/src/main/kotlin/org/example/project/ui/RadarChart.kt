@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -42,6 +43,14 @@ fun RadarChartView(
     val maxRadiusFraction = 0.34f
     val iconRadiusDp = ((250f * maxRadiusFraction) + 28f).dp
 
+    val dataPath = remember { Path() }
+    val axisTrig = remember(axisCount) {
+        List(axisCount) { i ->
+            val a = axisAngle(i, axisCount)
+            cos(a).toFloat() to sin(a).toFloat()
+        }
+    }
+
     val animatedScores = List(axisCount) { i ->
         animateFloatAsState(
             targetValue = normalized(scores.getOrNull(i)),
@@ -70,34 +79,39 @@ fun RadarChartView(
                 )
             }
             for (i in 0 until axisCount) {
+                val (cosA, sinA) = axisTrig[i]
                 drawLine(
                     color = ringColor,
                     start = center,
-                    end = vertexPoint(i, center, maxRadius, axisCount),
+                    end = Offset(center.x + maxRadius * cosA, center.y - maxRadius * sinA),
                     strokeWidth = hairline,
                 )
             }
 
-            val dataPath = Path().apply {
-                for (i in 0 until axisCount) {
-                    val v = vertexPoint(i, center, maxRadius * animatedScores[i].value, axisCount)
-                    if (i == 0) moveTo(v.x, v.y) else lineTo(v.x, v.y)
-                }
-                close()
+            dataPath.rewind()
+            for (i in 0 until axisCount) {
+                val (cosA, sinA) = axisTrig[i]
+                val r = maxRadius * animatedScores[i].value
+                val v = Offset(center.x + r * cosA, center.y - r * sinA)
+                if (i == 0) dataPath.moveTo(v.x, v.y) else dataPath.lineTo(v.x, v.y)
             }
+            dataPath.close()
+
             drawPath(dataPath, color = accentColor.copy(alpha = 0.15f), style = Fill)
             drawPath(dataPath, color = accentColor.copy(alpha = 0.7f), style = Stroke(width = outline))
 
             for (i in 0 until axisCount) {
-                val v = vertexPoint(i, center, maxRadius * animatedScores[i].value, axisCount)
+                val (cosA, sinA) = axisTrig[i]
+                val r = maxRadius * animatedScores[i].value
+                val v = Offset(center.x + r * cosA, center.y - r * sinA)
                 drawCircle(color = accentColor, radius = 2.5f, center = v)
             }
         }
 
         for (i in 0 until axisCount) {
-            val a = axisAngle(i, axisCount)
-            val dx = (iconRadiusDp.value * cos(a)).dp
-            val dy = (-iconRadiusDp.value * sin(a)).dp
+            val (cosA, sinA) = axisTrig[i]
+            val dx = (iconRadiusDp.value * cosA).dp
+            val dy = (-iconRadiusDp.value * sinA).dp
             axisIconPainters.getOrNull(i)?.let { painter ->
                 Image(
                     painter = painter,
@@ -124,9 +138,3 @@ private fun normalized(value: Double?): Float =
  */
 private fun axisAngle(index: Int, axisCount: Int): Double =
     Math.PI / 2.0 + (2.0 * Math.PI * index / axisCount)
-
-/** Vertex position for axis `index`, with the y-axis flipped for screen space. */
-private fun vertexPoint(index: Int, center: Offset, radius: Float, axisCount: Int): Offset {
-    val a = axisAngle(index, axisCount)
-    return Offset(center.x + radius * cos(a).toFloat(), center.y - radius * sin(a).toFloat())
-}

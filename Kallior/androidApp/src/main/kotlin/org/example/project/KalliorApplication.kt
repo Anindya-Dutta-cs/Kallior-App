@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import android.content.ComponentCallbacks2
 import org.example.project.health.SleepTrackingScheduler
 import org.example.project.health.scheduleHealthSync
 
@@ -20,5 +21,19 @@ class KalliorApplication : Application() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             SleepTrackingScheduler.rescheduleFromStoredSchedule(this@KalliorApplication)
         }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW ||
+            level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL ||
+            level == ComponentCallbacks2.TRIM_MEMORY_MODERATE) {
+            InstalledAppsProvider.trimMemory(level)
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_COMPLETE)
     }
 }

@@ -23,7 +23,6 @@ data class InstalledAppInfo(
 class InstalledAppsProvider @Inject constructor(private val context: Context) {
 
     private val pm: PackageManager = context.packageManager
-    private val iconCache = mutableMapOf<String, Drawable>()
 
     private val cachedApps: List<InstalledAppInfo> by lazy { computeInstalledApps() }
 
@@ -38,9 +37,9 @@ class InstalledAppsProvider @Inject constructor(private val context: Context) {
 
     /** Lazily loads and caches the launcher icon for a package. */
     fun getApplicationIcon(packageName: String): Drawable? {
-        iconCache[packageName]?.let { return it }
+        iconCache.get(packageName)?.let { return it }
         return try {
-            pm.getApplicationIcon(packageName).also { iconCache[packageName] = it }
+            pm.getApplicationIcon(packageName).also { iconCache.put(packageName, it) }
         } catch (_: Exception) {
             null
         }
@@ -112,7 +111,21 @@ class InstalledAppsProvider @Inject constructor(private val context: Context) {
         else -> "Other"
     }
 
-    private companion object {
+    companion object {
+        private val iconCache = android.util.LruCache<String, Drawable>(100)
+
+        fun clearCache() {
+            iconCache.evictAll()
+        }
+
+        fun trimMemory(level: Int) {
+            if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
+                clearCache()
+            } else if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+                iconCache.trimToSize(iconCache.maxSize() / 2)
+            }
+        }
+
         val CATEGORY_ORDER = listOf(
             "Social",
             "Games",

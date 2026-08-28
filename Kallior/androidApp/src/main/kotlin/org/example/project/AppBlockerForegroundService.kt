@@ -16,6 +16,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 
 class AppBlockerForegroundService : Service() {
 
@@ -116,6 +117,7 @@ class AppBlockerForegroundService : Service() {
         super.onDestroy()
         serviceJob?.cancel()
         overlayManager.hideOverlay()
+        scope.cancel()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

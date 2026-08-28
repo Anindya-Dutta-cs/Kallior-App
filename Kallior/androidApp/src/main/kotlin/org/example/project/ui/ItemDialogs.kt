@@ -136,7 +136,7 @@ fun AddTaskDialog(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shape = RoundedCornerShape(topStart = 15.3.dp, topEnd = 15.3.dp),
         containerColor = SheetDark,
         dragHandle = null,
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
@@ -151,7 +151,7 @@ fun AddTaskDialog(
         SideEffect {
             val window = (view.parent as? DialogWindowProvider)?.window
             if (window != null) {
-                window.navigationBarColor = 0xFF161616.toInt()
+                window.navigationBarColor = android.graphics.Color.BLACK
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     window.isNavigationBarContrastEnforced = false
                 }
@@ -366,7 +366,7 @@ fun AddReminderDialog(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shape = RoundedCornerShape(topStart = 15.3.dp, topEnd = 15.3.dp),
         containerColor = SheetDark,
         dragHandle = null,
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
@@ -381,7 +381,7 @@ fun AddReminderDialog(
         SideEffect {
             val window = (view.parent as? DialogWindowProvider)?.window
             if (window != null) {
-                window.navigationBarColor = 0xFF161616.toInt()
+                window.navigationBarColor = android.graphics.Color.BLACK
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     window.isNavigationBarContrastEnforced = false
                 }

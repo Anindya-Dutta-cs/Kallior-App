@@ -1,10 +1,14 @@
 package org.example.project
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +34,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import kallos.viewmodel.GameViewModel
 import org.example.project.ui.AddAppScreen
+import org.example.project.ui.AddWebsitesScreen
 import org.example.project.ui.AriaAlarmScreen
 import org.example.project.ui.BadgesScreen
 import org.example.project.ui.FocusFortressScreen
@@ -37,6 +43,9 @@ import org.example.project.ui.KalliorColors
 import org.example.project.ui.ProfileScreen
 import org.example.project.ui.SettingsScreen
 import org.example.project.ui.PlaceholderScreen
+
+/** CompositionLocal to track if the navigation bar should transition to a sheet. */
+val LocalNavBarTransition = compositionLocalOf { mutableStateOf(false) }
 
 /** Navigation graph for the Android app shell. */
 @Composable
@@ -52,97 +61,104 @@ fun KalliorNavGraph(navController: NavHostController) {
     val currentRoute = navBackStackEntry?.destination?.route
 
     var showMoreMenu by remember { mutableStateOf(false) }
+    val isTransitioning = remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        NavHost(
-            navController = navController,
-            startDestination = "home",
-            modifier = Modifier.fillMaxSize()
-        ) {
-            composable("home") {
-                HomeScreen(
-                    navController = navController,
-                    gameViewModel = gameViewModel,
-                )
-            }
-            composable("profile") {
-                ProfileScreen(
-                    gameViewModel = gameViewModel,
-                )
-            }
-            composable("badges") {
-                BadgesScreen(navController = navController)
-            }
-            composable("alarm") {
-                AriaAlarmScreen()
-            }
-            composable("blocker") {
-                FocusFortressScreen(
-                    navController = navController,
-                )
-            }
-            composable(
-                route = "addApp?mode={mode}",
-                arguments = listOf(androidx.navigation.navArgument("mode") { defaultValue = "BLOCKER" })
-            ) { backStackEntry ->
-                val mode = backStackEntry.arguments?.getString("mode") ?: "BLOCKER"
-                AddAppScreen(navController = navController, mode = mode)
-            }
-            composable("settings") {
-                SettingsScreen(
-                    gameViewModel = gameViewModel,
-                )
-            }
-            composable("about") {
-                PlaceholderScreen("About Us")
-            }
-        }
-
-        // Floating Navigation Bar - Overlaying content to reveal background through curves
-        KalliorNavigationBar(
-            currentRoute = currentRoute,
-            modifier = Modifier.align(Alignment.BottomCenter),
-            onItemClick = { route ->
-                if (route == "more") {
-                    showMoreMenu = !showMoreMenu
-                } else {
-                    showMoreMenu = false
-                    if (route == "home") {
-                        navController.navigate("home") {
-                            popUpTo("home") { inclusive = true }
-                        }
-                    } else {
-                        navController.navigate(route)
-                    }
+    CompositionLocalProvider(LocalNavBarTransition provides isTransitioning) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavHost(
+                navController = navController,
+                startDestination = "home",
+                modifier = Modifier.fillMaxSize()
+            ) {
+                composable("home") {
+                    HomeScreen(
+                        navController = navController,
+                        gameViewModel = gameViewModel,
+                    )
+                }
+                composable("profile") {
+                    ProfileScreen(
+                        gameViewModel = gameViewModel,
+                    )
+                }
+                composable("badges") {
+                    BadgesScreen(navController = navController)
+                }
+                composable("alarm") {
+                    AriaAlarmScreen()
+                }
+                composable("blocker") {
+                    FocusFortressScreen(
+                        navController = navController,
+                    )
+                }
+                composable(
+                    route = "addApp?mode={mode}",
+                    arguments = listOf(androidx.navigation.navArgument("mode") { defaultValue = "BLOCKER" })
+                ) { backStackEntry ->
+                    val mode = backStackEntry.arguments?.getString("mode") ?: "BLOCKER"
+                    AddAppScreen(navController = navController, mode = mode)
+                }
+                composable("addWebsites") {
+                    AddWebsitesScreen(navController = navController)
+                }
+                composable("settings") {
+                    SettingsScreen(
+                        gameViewModel = gameViewModel,
+                    )
+                }
+                composable("about") {
+                    PlaceholderScreen("About Us")
                 }
             }
-        )
 
-        // More Menu Expansion - Panel is transparent, items are styled like the nav bar
-        AnimatedVisibility(
-            visible = showMoreMenu,
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(bottom = 68.dp) // Gap between bottom tab and nav bar top will be 8.dp (same as spacedBy)
-                .zIndex(2f)
-        ) {
-            Column(
+            // Floating Navigation Bar - Overlaying content to reveal background through curves
+            KalliorNavigationBar(
+                currentRoute = currentRoute,
+                isTransitioning = isTransitioning.value,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                onItemClick = { route ->
+                    if (route == "more") {
+                        showMoreMenu = !showMoreMenu
+                    } else {
+                        showMoreMenu = false
+                        if (route == "home") {
+                            navController.navigate("home") {
+                                popUpTo("home") { inclusive = true }
+                            }
+                        } else {
+                            navController.navigate(route)
+                        }
+                    }
+                }
+            )
+
+            // More Menu Expansion - Panel is transparent, items are styled like the nav bar
+            AnimatedVisibility(
+                visible = showMoreMenu,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                 modifier = Modifier
-                    .width(180.dp)
-                    .padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .align(Alignment.BottomCenter)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(bottom = 68.dp) // Gap between bottom tab and nav bar top will be 8.dp (same as spacedBy)
+                    .zIndex(2f)
             ) {
-                MoreMenuItem("Profile", onClick = {
-                    showMoreMenu = false
-                    navController.navigate("profile")
-                })
-                MoreMenuItem("Badges", onClick = {
-                    showMoreMenu = false
-                    navController.navigate("badges")
-                })
+                Column(
+                    modifier = Modifier
+                        .width(180.dp)
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    MoreMenuItem("Profile", onClick = {
+                        showMoreMenu = false
+                        navController.navigate("profile")
+                    })
+                    MoreMenuItem("Badges", onClick = {
+                        showMoreMenu = false
+                        navController.navigate("badges")
+                    })
+                }
             }
         }
     }
@@ -151,6 +167,7 @@ fun KalliorNavGraph(navController: NavHostController) {
 @Composable
 fun KalliorNavigationBar(
     currentRoute: String?,
+    isTransitioning: Boolean,
     modifier: Modifier = Modifier,
     onItemClick: (String) -> Unit
 ) {
@@ -158,8 +175,28 @@ fun KalliorNavigationBar(
     // 22.5% of height: 68 * 0.225 = 15.3dp
     val cornerRadius = barHeight * 0.225f
 
+    val bgColor by animateColorAsState(
+        targetValue = if (isTransitioning) Color.Black else Color(0xFF161616),
+        animationSpec = tween(durationMillis = 400, easing = LinearOutSlowInEasing),
+        label = "navBarColor"
+    )
+
+    val context = LocalContext.current
+    LaunchedEffect(isTransitioning) {
+        val activity = context as? ComponentActivity ?: return@LaunchedEffect
+        if (isTransitioning) {
+            activity.enableEdgeToEdge(
+                navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.BLACK)
+            )
+        } else {
+            activity.enableEdgeToEdge(
+                navigationBarStyle = SystemBarStyle.dark(0xFF161616.toInt())
+            )
+        }
+    }
+
     Surface(
-        color = Color(0xFF161616),
+        color = bgColor,
         shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius),
         modifier = modifier
             .fillMaxWidth()
@@ -173,45 +210,65 @@ fun KalliorNavigationBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val tabModifier = Modifier.weight(1f)
-            
-            NavTab(
-                modifier = tabModifier,
-                label = "Home",
-                iconRes = R.drawable.home,
-                isSelected = currentRoute == "home",
-                onClick = { onItemClick("home") }
+
+            // Define tabs explicitly to handle individual staggered animations
+            val tabs = listOf(
+                Triple("Home", R.drawable.home, null),
+                Triple("Zen Silo", R.drawable.focusfortress, null),
+                Triple("More", null, Icons.Default.KeyboardArrowUp),
+                Triple("AriaAlarm", R.drawable.ariaalarm, null),
+                Triple("Settings", R.drawable.settings, null)
             )
-            NavTab(
-                modifier = tabModifier,
-                label = "Zen Silo",
-                iconRes = R.drawable.focusfortress,
-                isSelected = currentRoute == "blocker",
-                onClick = { onItemClick("blocker") }
-            )
-            NavTab(
-                modifier = tabModifier,
-                label = "More",
-                iconVector = Icons.Default.KeyboardArrowUp,
-                isSelected = false,
-                onClick = { onItemClick("more") }
-            )
-            NavTab(
-                modifier = tabModifier,
-                label = "AriaAlarm",
-                iconRes = R.drawable.ariaalarm,
-                isSelected = currentRoute == "alarm",
-                onClick = { onItemClick("alarm") }
-            )
-            NavTab(
-                modifier = tabModifier,
-                label = "Settings",
-                iconRes = R.drawable.settings,
-                isSelected = currentRoute == "settings",
-                onClick = { onItemClick("settings") }
-            )
+
+            tabs.forEachIndexed { index, (label, iconRes, iconVector) ->
+                val distFromCenter = kotlin.math.abs(index - 2)
+                // Stagger: 0ms, 150ms, 300ms
+                val staggerDelay = (2 - distFromCenter) * 150
+
+                val tabProgress by animateFloatAsState(
+                    targetValue = if (isTransitioning) 0f else 1f,
+                    animationSpec = tween(
+                        durationMillis = 400,
+                        delayMillis = if (isTransitioning) staggerDelay else 0,
+                        easing = LinearOutSlowInEasing
+                    ),
+                    label = "navTabProgress_$index"
+                )
+
+                NavTab(
+                    modifier = tabModifier.graphicsLayer {
+                        alpha = tabProgress
+                        scaleX = 0.8f + 0.2f * tabProgress
+                        scaleY = 0.8f + 0.2f * tabProgress
+                        translationY = 24.dp.toPx() * (1f - tabProgress)
+                    },
+                    label = label,
+                    iconRes = iconRes,
+                    iconVector = iconVector,
+                    isSelected = when(index) {
+                        0 -> currentRoute == "home"
+                        1 -> currentRoute == "blocker"
+                        3 -> currentRoute == "alarm"
+                        4 -> currentRoute == "settings"
+                        else -> false
+                    },
+                    onClick = {
+                        val route = when(index) {
+                            0 -> "home"
+                            1 -> "blocker"
+                            2 -> "more"
+                            3 -> "alarm"
+                            4 -> "settings"
+                            else -> "home"
+                        }
+                        onItemClick(route)
+                    }
+                )
+            }
         }
     }
 }
+
 
 @Composable
 fun NavTab(

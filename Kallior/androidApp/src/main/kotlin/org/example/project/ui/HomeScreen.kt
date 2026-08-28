@@ -77,6 +77,7 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import org.example.project.LocalNavBarTransition
 import org.example.project.notification.AlarmScheduler
 import org.example.project.notification.NotificationHelper
 import kallos.model.Remainder
@@ -106,6 +107,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -117,6 +119,7 @@ fun HomeScreen(
     var showTaskDialog by remember { mutableStateOf(false) }
     var showReminderDialog by remember { mutableStateOf(false) }
     var taskToDelete by remember { mutableStateOf<Task?>(null) }
+    val isNavBarTransitioning = LocalNavBarTransition.current
 
     val context = LocalContext.current
     val alarmScheduler = remember { AlarmScheduler(context) }
@@ -305,33 +308,46 @@ fun HomeScreen(
                 )
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState),
-            ) {
-                Spacer(modifier = Modifier.height(360.dp))
-                PrimaryLayerContent(
-                    gameViewModel = gameViewModel,
-                    reminders = gameViewModel.reminders,
-                    onAddTask = { showTaskDialog = true },
-                    onAddReminder = { showReminderDialog = true },
-                    onRemoveReminder = { id ->
-                        alarmScheduler.cancel(id)
-                        gameViewModel.removeReminder(id)
-                    },
-                    onBadgesTap = { navController.navigate("badges") },
-                    onCompleteTask = { id -> gameViewModel.completeTask(id) },
-                    onDeleteTask = { id ->
-                        val task = gameViewModel.tasks.find { it.id == id }
-                        if (task?.status == TaskStatus.Pending) {
-                            taskToDelete = task
-                        } else {
-                            gameViewModel.deleteTask(id)
-                        }
-                    },
-                )
-            }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState),
+    ) {
+        Spacer(modifier = Modifier.height(360.dp))
+        PrimaryLayerContent(
+            gameViewModel = gameViewModel,
+            reminders = gameViewModel.reminders,
+            onAddTask = {
+                coroutineScope.launch {
+                    isNavBarTransitioning.value = true
+                    // Trigger sheet slightly before icon animation finishes (stagger ends at 300ms + 400ms fade)
+                    delay(450.milliseconds) 
+                    showTaskDialog = true
+                }
+            },
+            onAddReminder = {
+                coroutineScope.launch {
+                    isNavBarTransitioning.value = true
+                    delay(450.milliseconds)
+                    showReminderDialog = true
+                }
+            },
+            onRemoveReminder = { id ->
+                alarmScheduler.cancel(id)
+                gameViewModel.removeReminder(id)
+            },
+            onBadgesTap = { navController.navigate("badges") },
+            onCompleteTask = { id -> gameViewModel.completeTask(id) },
+            onDeleteTask = { id ->
+                val task = gameViewModel.tasks.find { it.id == id }
+                if (task?.status == TaskStatus.Pending) {
+                    taskToDelete = task
+                } else {
+                    gameViewModel.deleteTask(id)
+                }
+            },
+        )
+    }
         }
 
         // 3. Distortion Glow (Fades as we swipe left)
@@ -360,16 +376,23 @@ fun HomeScreen(
 
         if (showTaskDialog) {
             AddTaskDialog(
-                onDismiss = { showTaskDialog = false },
+                onDismiss = {
+                    showTaskDialog = false
+                    isNavBarTransitioning.value = false
+                },
                 onConfirm = { category, description, customTitle ->
                     gameViewModel.addTask(category, description, customTitle)
                     showTaskDialog = false
+                    isNavBarTransitioning.value = false
                 },
             )
         }
         if (showReminderDialog) {
             AddReminderDialog(
-                onDismiss = { showReminderDialog = false },
+                onDismiss = {
+                    showReminderDialog = false
+                    isNavBarTransitioning.value = false
+                },
                 onConfirm = { title, description, frequency ->
                     val time = kotlin.time.Instant.fromEpochMilliseconds(System.currentTimeMillis() + if(frequency > 0) frequency * 60 * 1000L else 0L)
                     val newReminder = Remainder.create(
@@ -384,6 +407,7 @@ fun HomeScreen(
                     gameViewModel.addReminder(newReminder)
                     alarmScheduler.schedule(newReminder)
                     showReminderDialog = false
+                    isNavBarTransitioning.value = false
                 },
             )
         }
@@ -519,7 +543,7 @@ private fun SharedHomeSections(
                     },
                     contentEndPadding = 20.dp,
                     emptyText = if (tasks.isEmpty()) "Click on + to add a\nnew task" else null,
-                    buttonColor = if (isShadow) ShadowButton else KalliorColors.PrimaryLayer,
+                    buttonColor = if (isShadow) ShadowButton else KalliorColors.AccentOrange,
                     buttonGlyphColor = if (isShadow) ShadowButtonGlyph else Color.White,
                     enabled = !isShadow,
                 ) {
@@ -552,7 +576,7 @@ private fun SharedHomeSections(
                     },
                     contentEndPadding = 12.dp,
                     emptyText = if (reminders.isEmpty()) "Reminder-free mind!" else null,
-                    buttonColor = if (isShadow) ShadowButton else KalliorColors.PrimaryLayer,
+                    buttonColor = if (isShadow) ShadowButton else KalliorColors.AccentOrange,
                     buttonGlyphColor = if (isShadow) ShadowButtonGlyph else Color.White,
                     enabled = !isShadow,
                 ) {
