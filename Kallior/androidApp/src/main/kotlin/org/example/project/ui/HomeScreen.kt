@@ -3,6 +3,13 @@ package org.example.project.ui
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -41,6 +48,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.Composable
@@ -135,9 +143,9 @@ fun HomeScreen(
         }
         permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION)
         permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
-        
+
         permissionLauncher.launch(permissions.toTypedArray())
-        
+
         NotificationHelper.createChannel(context)
     }
 
@@ -159,6 +167,7 @@ fun HomeScreen(
         painterResource(R.drawable.resilience),
         painterResource(R.drawable.consistency),
     )
+
 
     // Shadow Reveal State
     val screenWidthPx = context.resources.displayMetrics.widthPixels.toFloat()
@@ -260,7 +269,7 @@ fun HomeScreen(
                     val progress = (currentOffset / screenWidthPx).coerceIn(0f, 1f)
                     val distortIntensity = (1f - kotlin.math.abs(progress - 0.5f) * 2f).coerceIn(0f, 1f)
                     val glitchWidth = 32.dp.toPx() * distortIntensity
-                    
+
                     // 1. Draw main clean content (clipped to reveal edge)
                     clipRect(right = currentOffset - glitchWidth) {
                         scope.drawContent()
@@ -270,12 +279,12 @@ fun HomeScreen(
                     if (distortIntensity > 0f) {
                         val segmentHeight = 10.dp.toPx()
                         val segments = (size.height / segmentHeight).toInt()
-                        
+
                         for (i in 0 until segments) {
                             val y = i * segmentHeight
                             // Deterministic jitter based on vertical position
                             val jitter = (if (i % 4 == 0) 12f else if (i % 7 == 0) -8f else 4f) * distortIntensity
-                            
+
                             clipRect(
                                 left = currentOffset - glitchWidth,
                                 right = currentOffset,
@@ -321,7 +330,7 @@ fun HomeScreen(
                 coroutineScope.launch {
                     isNavBarTransitioning.value = true
                     // Trigger sheet slightly before icon animation finishes (stagger ends at 300ms + 400ms fade)
-                    delay(450.milliseconds) 
+                    delay(450.milliseconds)
                     showTaskDialog = true
                 }
             },
@@ -337,7 +346,7 @@ fun HomeScreen(
                 gameViewModel.removeReminder(id)
             },
             onBadgesTap = { navController.navigate("badges") },
-            onCompleteTask = { id -> gameViewModel.completeTask(id) },
+            onCompleteTask = gameViewModel::completeTask,
             onDeleteTask = { id ->
                 val task = gameViewModel.tasks.find { it.id == id }
                 if (task?.status == TaskStatus.Pending) {
@@ -356,9 +365,9 @@ fun HomeScreen(
                 .fillMaxHeight()
                 .width(60.dp)
                 .offset { IntOffset(currentOffset.roundToInt() - 30, 0) }
-                .graphicsLayer { 
+                .graphicsLayer {
                     val progress = (currentOffset / screenWidthPx).coerceIn(0f, 1f)
-                    alpha = progress 
+                    alpha = progress
                 }
         ) {
             // Subtle vertical glow centered on the "tear"
@@ -381,6 +390,7 @@ fun HomeScreen(
                     isNavBarTransitioning.value = false
                 },
                 onConfirm = { category, description, customTitle ->
+                    suppressNextProgressionFeedback(context)
                     gameViewModel.addTask(category, description, customTitle)
                     showTaskDialog = false
                     isNavBarTransitioning.value = false
@@ -411,6 +421,7 @@ fun HomeScreen(
                 },
             )
         }
+
 
         taskToDelete?.let { task ->
             DeleteConfirmationDialog(
@@ -1186,4 +1197,3 @@ fun ShadowOverlay(
         }
     }
 }
-

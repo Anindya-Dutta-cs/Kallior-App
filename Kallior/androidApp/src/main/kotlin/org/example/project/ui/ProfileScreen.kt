@@ -39,12 +39,10 @@ fun ProfileScreen(
 ) {
     val player = gameViewModel.player
     val snapshot = gameViewModel.todaySnapshot
-    
+
     val steps = snapshot?.steps ?: 0
     val sleepMin = snapshot?.minutesSlept ?: 0.0
-    val sleepHours = (sleepMin / 60).toInt()
-    val sleepRemainderMin = (sleepMin % 60).toInt()
-    val sleepText = if (sleepHours > 0) "${sleepHours}h ${sleepRemainderMin}m" else "${sleepRemainderMin}m"
+    val sleepMinutes = sleepMin.toInt()
 
     val scrollState = rememberScrollState()
     val nameScale by animateFloatAsState(
@@ -110,7 +108,7 @@ fun ProfileScreen(
                     .size(48.dp)
                     .border(1.dp, Color(0xFF424242), CircleShape)
             )
-            
+
             // Right side small circle
             Box(
                 modifier = Modifier
@@ -119,7 +117,7 @@ fun ProfileScreen(
                     .size(48.dp)
                     .border(1.dp, Color(0xFF424242), CircleShape)
             )
-            
+
             // Center bottom small circle
             Box(
                 modifier = Modifier
@@ -136,8 +134,13 @@ fun ProfileScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            ProfileMetricItem(label = "Steps: ", value = steps.toString())
-            ProfileMetricItem(label = "Sleep: ", value = sleepText)
+            ProfileMetricItem(label = "Steps: ", targetValue = steps) { it.toInt().toString() }
+            ProfileMetricItem(label = "Sleep: ", targetValue = sleepMinutes) { minutes ->
+                val wholeMinutes = minutes.toInt()
+                val hours = wholeMinutes / 60
+                val remainder = wholeMinutes % 60
+                if (hours > 0) "${hours}h ${remainder}m" else "${remainder}m"
+            }
         }
 
         Spacer(modifier = Modifier.height(80.dp))
@@ -146,7 +149,7 @@ fun ProfileScreen(
         ProfileActionButton(text = "Account & Security", onClick = {})
         Spacer(modifier = Modifier.height(20.dp))
         ProfileActionButton(text = "Report a bug", onClick = {})
-        
+
         Spacer(modifier = Modifier.height(140.dp))
     }
 }
@@ -155,7 +158,11 @@ fun ProfileScreen(
  * A metric item with a label, an orange dash decoration, and the dynamic value.
  */
 @Composable
-fun ProfileMetricItem(label: String, value: String) {
+fun ProfileMetricItem(
+    label: String,
+    targetValue: Int,
+    format: (Float) -> String,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = label,
@@ -167,14 +174,16 @@ fun ProfileMetricItem(label: String, value: String) {
             )
         )
         Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = value,
+        AnimatedCountText(
+            targetValue = targetValue.toFloat(),
+            format = format,
+            color = KalliorColors.AccentOrange,
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontFamily = Philosopher,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
-                color = KalliorColors.AccentOrange
-            )
+            ),
+            label = "${label}CountUp",
         )
     }
 }

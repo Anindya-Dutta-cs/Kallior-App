@@ -1,7 +1,7 @@
 package org.example.project.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -9,7 +9,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -19,7 +24,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -43,6 +52,32 @@ fun RadarChartView(
     val maxRadiusFraction = 0.34f
     val iconRadiusDp = ((250f * maxRadiusFraction) + 28f).dp
 
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var isAppOpen by remember(lifecycleOwner) {
+        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+    }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> isAppOpen = true
+                Lifecycle.Event.ON_PAUSE -> isAppOpen = false
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val radarPreferences = remember(context) {
+        context.getSharedPreferences("radar_chart_animation", android.content.Context.MODE_PRIVATE)
+    }
+    val targetScores = List(axisCount) { index -> normalized(scores.getOrNull(index)) }
+    val initialScores = remember(radarPreferences) {
+        List(axisCount) { index ->
+            radarPreferences.getFloat("score_$index", targetScores[index])
+        }
+    }
     val dataPath = remember { Path() }
     val axisTrig = remember(axisCount) {
         List(axisCount) { i ->
@@ -51,12 +86,25 @@ fun RadarChartView(
         }
     }
 
-    val animatedScores = List(axisCount) { i ->
-        animateFloatAsState(
-            targetValue = normalized(scores.getOrNull(i)),
-            animationSpec = tween(durationMillis = 350, easing = EaseOut),
-            label = "score_$i",
-        )
+    val animatedScores = List(axisCount) { index ->
+        val animatedScore = remember { Animatable(initialScores[index]) }
+        LaunchedEffect(targetScores[index], isAppOpen) {
+            if (isAppOpen) {
+                animatedScore.animateTo(
+                    targetScores[index],
+                    animationSpec = tween(durationMillis = 1_000, easing = EaseOut),
+                )
+            }
+        }
+        animatedScore
+    }
+
+    LaunchedEffect(targetScores, isAppOpen) {
+        if (isAppOpen) {
+            radarPreferences.edit().apply {
+                targetScores.forEachIndexed { index, score -> putFloat("score_$index", score) }
+            }.apply()
+        }
     }
 
     Box(

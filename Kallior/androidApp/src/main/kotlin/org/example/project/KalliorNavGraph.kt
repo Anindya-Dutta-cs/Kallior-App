@@ -41,6 +41,7 @@ import org.example.project.ui.FocusFortressScreen
 import org.example.project.ui.HomeScreen
 import org.example.project.ui.KalliorColors
 import org.example.project.ui.ProfileScreen
+import org.example.project.ui.ProgressionFeedbackHost
 import org.example.project.ui.SettingsScreen
 import org.example.project.ui.PlaceholderScreen
 
@@ -160,6 +161,8 @@ fun KalliorNavGraph(navController: NavHostController) {
                     })
                 }
             }
+
+            ProgressionFeedbackHost(gameViewModel)
         }
     }
 }
@@ -316,7 +319,7 @@ fun NavTab(
 fun MoreMenuItem(label: String, onClick: () -> Unit) {
     val itemHeight = 48.dp
     val radius = itemHeight * 0.225f
-    
+
     Box(
         modifier = Modifier
             .fillMaxWidth()

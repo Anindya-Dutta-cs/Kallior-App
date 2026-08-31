@@ -236,7 +236,7 @@ fun FocusFortressScreen(navController: NavHostController) {
                 refreshProtection()
             },
         )
-        
+
         Spacer(Modifier.height(24.dp))
         Text(
             text = "Protection is active",
@@ -256,33 +256,35 @@ fun FocusFortressScreen(navController: NavHostController) {
         }
 
         Spacer(Modifier.height(60.dp))
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             MetricItem(
                 title = "Time Sink",
-                value = if (screenTimeData == null) "--" else formatDuration(sinkSeconds),
-                modifier = Modifier.weight(1f)
+                seconds = sinkSeconds,
+                isLoading = screenTimeData == null,
+                modifier = Modifier.weight(1f),
             )
             MetricItem(
                 title = "Total Screen Time",
-                value = totalSeconds?.let(::formatDuration) ?: "--",
+                seconds = totalSeconds ?: 0L,
+                isLoading = totalSeconds == null,
                 modifier = Modifier.weight(1f),
-                alignment = Alignment.End
+                alignment = Alignment.End,
             )
         }
 
         Spacer(Modifier.height(32.dp))
-        
+
         TimeWastingAppsCard(
             count = timeWastingApps.size,
             onClick = { navController.navigate("addApp?mode=TIME_WASTING") }
         )
-        
+
         Spacer(Modifier.height(20.dp))
-        
+
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             LimitedActionCard(
                 title = "Limited Apps",
@@ -301,7 +303,7 @@ fun FocusFortressScreen(navController: NavHostController) {
         }
 
         Spacer(Modifier.height(40.dp))
-        
+
         RedesignedEarningsCard(
             apps = sinkApps,
             hasUsageData = screenTimeData != null,
@@ -415,9 +417,10 @@ private fun LotusIllustration(onClick: () -> Unit) {
 @Composable
 private fun MetricItem(
     title: String,
-    value: String,
+    seconds: Long,
+    isLoading: Boolean,
     modifier: Modifier = Modifier,
-    alignment: Alignment.Horizontal = Alignment.Start
+    alignment: Alignment.Horizontal = Alignment.Start,
 ) {
     Column(modifier = modifier, horizontalAlignment = alignment) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -427,11 +430,21 @@ private fun MetricItem(
                 style = MaterialTheme.typography.bodyMedium.copy(fontFamily = Philosopher, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             )
             Spacer(Modifier.width(6.dp))
-            Text(
-                text = value,
-                color = KalliorColors.AccentOrange,
-                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = Philosopher, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            )
+            if (isLoading) {
+                Text(
+                    text = "--",
+                    color = KalliorColors.AccentOrange,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = Philosopher, fontWeight = FontWeight.Bold, fontSize = 13.sp),
+                )
+            } else {
+                AnimatedCountText(
+                    targetValue = seconds.toFloat(),
+                    format = { formatDuration(it.toLong()) },
+                    color = KalliorColors.AccentOrange,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = Philosopher, fontWeight = FontWeight.Bold, fontSize = 13.sp),
+                    label = "${title}CountUp",
+                )
+            }
         }
     }
 }
@@ -601,11 +614,21 @@ private fun RedesignedEarningsCard(
             style = MaterialTheme.typography.bodyMedium.copy(fontFamily = Philosopher)
         )
         Spacer(Modifier.height(8.dp))
-        Text(
-            text = if (hasUsageData) "$ ${String.format("%.2f", earnings)}" else "$ --",
-            color = KalliorColors.AccentOrange,
-            style = MaterialTheme.typography.displayMedium.copy(fontFamily = Philosopher, fontWeight = FontWeight.Bold, fontSize = 36.sp),
-        )
+        if (hasUsageData) {
+            AnimatedCountText(
+                targetValue = earnings,
+                format = { "$ ${String.format("%.2f", it)}" },
+                color = KalliorColors.AccentOrange,
+                style = MaterialTheme.typography.displayMedium.copy(fontFamily = Philosopher, fontWeight = FontWeight.Bold, fontSize = 36.sp),
+                label = "earningsCountUp",
+            )
+        } else {
+            Text(
+                text = "$ --",
+                color = KalliorColors.AccentOrange,
+                style = MaterialTheme.typography.displayMedium.copy(fontFamily = Philosopher, fontWeight = FontWeight.Bold, fontSize = 36.sp),
+            )
+        }
         Spacer(Modifier.height(8.dp))
         Text(
             text = buildAnnotatedString {
@@ -636,7 +659,7 @@ private fun RedesignedEarningsCard(
         Spacer(Modifier.height(16.dp))
         HorizontalDivider(color = KalliorColors.RadarLine, thickness = 1.dp)
         Spacer(Modifier.height(24.dp))
-        
+
         Box(
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)

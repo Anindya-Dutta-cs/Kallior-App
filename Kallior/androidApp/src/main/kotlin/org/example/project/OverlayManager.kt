@@ -12,12 +12,14 @@ import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,6 +60,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -65,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
@@ -217,12 +222,23 @@ private fun BlockingOverlay(
     onExit: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF121212)),
-        contentAlignment = Alignment.Center
+    var isVisible by remember { mutableStateOf(false) }
+    var unlockMessage by remember { mutableStateOf<String?>(null) }
+    var selectedUnlockMinutes by remember { mutableStateOf<Int?>(null) }
+    val haptic = LocalHapticFeedback.current
+
+    LaunchedEffect(Unit) { isVisible = true }
+
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = scaleIn(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF121212)),
+            contentAlignment = Alignment.Center
+        ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -327,7 +343,7 @@ private fun BlockingOverlay(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         Text(
-                            text = "Allow Untill",
+                            text = "Allow Until",
                             fontFamily = FontFamily.Serif,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium,
@@ -361,7 +377,9 @@ private fun BlockingOverlay(
                         DropdownMenuItem(
                             text = { Text("For $minutes minutes", color = Color.White, fontFamily = FontFamily.Serif) },
                             onClick = {
-                                onAllowUntilSelected(minutes)
+                                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                selectedUnlockMinutes = minutes
+                                unlockMessage = "Unlocked for $minutes minutes"
                                 expanded = false
                             },
                             modifier = Modifier.background(Color(0xFF1A1A1A))
@@ -393,6 +411,38 @@ private fun BlockingOverlay(
 
             Spacer(modifier = Modifier.weight(0.5f))
         }
+
+        unlockMessage?.let { message ->
+            BoxWithConstraints(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(top = 32.dp, start = 24.dp, end = 24.dp),
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(maxWidth * 0.225f),
+                    color = Color(0xFF2A211B),
+                    border = BorderStroke(1.dp, Color(0xFFFFA45C).copy(alpha = 0.6f)),
+                ) {
+                    Text(
+                        text = message,
+                        color = Color.White,
+                        fontFamily = FontFamily.Serif,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 14.dp),
+                    )
+                }
+            }
+            LaunchedEffect(message) {
+                delay(900)
+                selectedUnlockMinutes?.let(onAllowUntilSelected)
+            }
+        }
+    }
     }
 }
 
