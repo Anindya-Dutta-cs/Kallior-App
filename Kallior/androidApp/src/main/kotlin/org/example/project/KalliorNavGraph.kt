@@ -4,10 +4,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,12 +25,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import kotlinx.coroutines.launch
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -43,6 +49,7 @@ import org.example.project.ui.KalliorColors
 import org.example.project.ui.ProfileScreen
 import org.example.project.ui.ProgressionFeedbackHost
 import org.example.project.ui.SettingsScreen
+import org.example.project.ui.FieldScoreScreen
 import org.example.project.ui.PlaceholderScreen
 
 /** CompositionLocal to track if the navigation bar should transition to a sheet. */
@@ -111,28 +118,79 @@ fun KalliorNavGraph(navController: NavHostController) {
                 composable("about") {
                     PlaceholderScreen("About Us")
                 }
+                composable(
+                    route = "field_score/{fieldIndex}?isShadow={isShadow}",
+                    arguments = listOf(
+                        androidx.navigation.navArgument("fieldIndex") {
+                            type = androidx.navigation.NavType.IntType
+                            defaultValue = 0
+                        },
+                        androidx.navigation.navArgument("isShadow") {
+                            type = androidx.navigation.NavType.BoolType
+                            defaultValue = false
+                        }
+                    ),
+                    enterTransition = {
+                        scaleIn(
+                            initialScale = 0.15f,
+                            animationSpec = tween(400, easing = FastOutSlowInEasing)
+                        ) + fadeIn(animationSpec = tween(300))
+                    },
+                    exitTransition = {
+                        scaleOut(
+                            targetScale = 0.15f,
+                            animationSpec = tween(350, easing = FastOutSlowInEasing)
+                        ) + fadeOut(animationSpec = tween(250))
+                    },
+                    popEnterTransition = {
+                        fadeIn(animationSpec = tween(300))
+                    },
+                    popExitTransition = {
+                        scaleOut(
+                            targetScale = 0.15f,
+                            animationSpec = tween(350, easing = FastOutSlowInEasing)
+                        ) + fadeOut(animationSpec = tween(250))
+                    }
+                ) { backStackEntry ->
+                    val fieldIndex = backStackEntry.arguments?.getInt("fieldIndex") ?: 0
+                    val isShadow = backStackEntry.arguments?.getBoolean("isShadow") ?: false
+                    FieldScoreScreen(
+                        navController = navController,
+                        gameViewModel = gameViewModel,
+                        fieldIndex = fieldIndex,
+                        isShadow = isShadow,
+                    )
+                }
             }
 
+            val isScoreScreen = currentRoute?.startsWith("field_score") == true
+
             // Floating Navigation Bar - Overlaying content to reveal background through curves
-            KalliorNavigationBar(
-                currentRoute = currentRoute,
-                isTransitioning = isTransitioning.value,
+            AnimatedVisibility(
+                visible = !isScoreScreen,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                 modifier = Modifier.align(Alignment.BottomCenter),
-                onItemClick = { route ->
-                    if (route == "more") {
-                        showMoreMenu = !showMoreMenu
-                    } else {
-                        showMoreMenu = false
-                        if (route == "home") {
-                            navController.navigate("home") {
-                                popUpTo("home") { inclusive = true }
-                            }
+            ) {
+                KalliorNavigationBar(
+                    currentRoute = currentRoute,
+                    isTransitioning = isTransitioning.value,
+                    onItemClick = { route ->
+                        if (route == "more") {
+                            showMoreMenu = !showMoreMenu
                         } else {
-                            navController.navigate(route)
+                            showMoreMenu = false
+                            if (route == "home") {
+                                navController.navigate("home") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            } else {
+                                navController.navigate(route)
+                            }
                         }
                     }
-                }
-            )
+                )
+            }
 
             // More Menu Expansion - Panel is transparent, items are styled like the nav bar
             AnimatedVisibility(
@@ -282,10 +340,33 @@ fun NavTab(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
+    val scale = remember { Animatable(1f) }
+    val scope = rememberCoroutineScope()
+
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() }
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                scope.launch {
+                    scale.animateTo(
+                        1.2f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
+                    scale.animateTo(
+                        1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
+                }
+                onClick()
+            }
             .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -294,23 +375,41 @@ fun NavTab(
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = label,
-                tint = if (isSelected) KalliorColors.AccentOrange else KalliorColors.MutedText,
-                modifier = Modifier.size(20.dp) // Smaller icons
+                tint = if (isSelected) KalliorColors.AccentOrange else KalliorColors.InactiveNav,
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsLayer {
+                        scaleX = scale.value
+                        scaleY = scale.value
+                    }
             )
         } else if (iconVector != null) {
             Icon(
                 imageVector = iconVector,
                 contentDescription = label,
-                tint = KalliorColors.MutedText,
-                modifier = Modifier.size(20.dp) // Smaller icons
+                tint = KalliorColors.InactiveNav,
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsLayer {
+                        scaleX = scale.value
+                        scaleY = scale.value
+                    }
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
-            fontSize = 10.sp, // Smaller text
-            color = if (isSelected) KalliorColors.AccentOrange else KalliorColors.MutedText,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            fontSize = 10.sp,
+            color = if (isSelected) KalliorColors.AccentOrange else KalliorColors.InactiveNav,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+        )
+        Spacer(modifier = Modifier.height(3.dp))
+        Box(
+            modifier = Modifier
+                .width(12.dp)
+                .height(2.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(if (isSelected) KalliorColors.AccentOrange else Color.Transparent)
         )
     }
 }
@@ -319,6 +418,7 @@ fun NavTab(
 fun MoreMenuItem(label: String, onClick: () -> Unit) {
     val itemHeight = 48.dp
     val radius = itemHeight * 0.225f
+    val haptic = LocalHapticFeedback.current
 
     Box(
         modifier = Modifier
@@ -326,7 +426,10 @@ fun MoreMenuItem(label: String, onClick: () -> Unit) {
             .height(itemHeight)
             .clip(RoundedCornerShape(radius))
             .background(Color(0xFF161616))
-            .clickable { onClick() }
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            }
             .padding(horizontal = 20.dp),
         contentAlignment = Alignment.CenterStart
     ) {

@@ -1,0 +1,36 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="256dp"
+    android:height="256dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+
+  <!-- Outer circle (clock body) -->
+  <path
+      android:pathData="M128,128m-118,0a118,118 0,1 1,236 0a118,118 0,1 1,-236 0"
+      android:strokeWidth="14"
+      android:fillColor="#00000000"
+      android:strokeColor="#231f20"/>
+
+  <!-- Bell - left -->
+  <path
+      android:pathData="M48,30 Q28,10 18,30 L40,60"
+      android:strokeWidth="10"
+      android:fillColor="#00000000"
+      android:strokeColor="#231f20"
+      android:strokeLineCap="round"/>
+
+  <!-- Bell - right -->
+  <path
+      android:pathData="M208,30 Q228,10 238,30 L216,60"
+      android:strokeWidth="10"
+      android:fillColor="#00000000"
+      android:strokeColor="#231f20"
+      android:strokeLineCap="round"/>
+
+  <!-- Small centre dot -->
+  <path
+      android:pathData="M128,128m-6,0a6,6 0,1 1,12 0a6,6 0,1 1,-12 0"
+      android:fillColor="#231f20"
+      android:strokeWidth="0"/>
+
+</vector>
