@@ -1,1365 +1,1390 @@
-You are working on my existing Android application.
+You are redesigning an existing Android application's "Zen Silo" screen.
 
-I want you to redesign and implement the current home/dashboard screen from TOP TO BOTTOM so that it closely matches the attached reference image.
+The CURRENT screen should be treated as the starting point and visual reference for understanding the current functionality.
 
-IMPORTANT:
-- The attached image is the visual design reference.
-- Do NOT simply create a static imitation or screenshot.
-- Rebuild the actual Android UI using the project's existing architecture, components, navigation, state management, backend integration, and data models.
-- Inspect the existing codebase before making changes.
-- Do not replace working functionality just to achieve the visual design.
-- Do not create fake/mock data where real app data already exists.
-- Maintain existing functionality unless explicitly instructed otherwise.
-- Follow the existing project's coding conventions.
-- Make the implementation production-quality, responsive, maintainable, and animation-friendly.
-- The final result should feel like the same app evolved into a much more polished product, not like a completely different application.
+Your job is to redesign and IMPLEMENT this screen from top to bottom.
+
+Do not merely describe a design.
+Do not create a static mockup.
+Do not replace the screen with hard-coded fake data.
+
+Inspect the existing project first, understand how this screen currently works, and then implement the redesign directly in the existing application.
+
+The result should feel like a polished production application with a strong visual identity, excellent UX, deliberate motion, and clear information hierarchy.
 
 ==================================================
-1. FIRST: INSPECT THE PROJECT
+1. CORE PRODUCT CONCEPT
 ==================================================
 
-Before writing code:
+This screen represents "Zen Silo"/"Focus Fortress", a digital protection/distraction-control system.
 
-1. Determine:
-   - Android framework being used.
-   - Jetpack Compose vs XML Views.
-   - Navigation architecture.
-   - State management approach.
-   - Database/backend architecture.
-   - Existing task models.
-   - Existing reminder models.
-   - Existing statistics/progress/radar-chart implementation.
-   - Existing theme/colors/typography.
-   - Existing reusable UI components.
-   - Existing animation utilities.
-   - Existing Supabase integration, if present.
+The screen communicates:
 
-2. Find the current implementation of:
-   - Task cards.
-   - Reminder cards.
-   - Radar chart.
-   - Add-task functionality.
-   - Add-reminder functionality.
-   - Task completion.
-   - Task deletion.
-   - User statistics.
-   - Navigation/bottom navigation.
+- protection is active
+- distracting apps are restricted
+- distracting websites are restricted
+- screen-time impact
+- time/value lost or potentially recovered
+- which apps are responsible for distraction
+- the user's current protection state
 
-3. Reuse existing components and services wherever practical.
+The lotus is the primary visual identity of Zen Silo.
 
-4. Do NOT create duplicate repositories, duplicate data models, duplicate database logic, or parallel implementations just because the UI is being redesigned.
+The lotus should NOT remain a static image.
 
-5. Before editing anything, briefly map out:
-   - Which files control the screen.
-   - Which files control the data.
-   - Which files control navigation.
-   - Which files control theme/design.
-   - Which files need to change.
-   - Which existing functionality must remain untouched.
+It should become an interactive animated representation of the protection system.
 
-Then implement the redesign.
+The redesign must preserve this concept.
 
 ==================================================
-2. DESIGN GOAL
+2. FIRST: INSPECT THE EXISTING PROJECT
 ==================================================
 
-The goal is a:
+Before modifying anything, inspect the entire relevant implementation.
+
+Determine:
+
+- Android framework
+- Jetpack Compose or XML Views
+- navigation architecture
+- state management
+- database/backend
+- repositories
+- services
+- screen-time tracking implementation
+- app-blocking implementation
+- website-blocking implementation
+- protection-state implementation
+- current Zen Silo screen
+- existing theme
+- existing icons
+- existing animation utilities
+- existing data models
+- existing navigation destinations
+
+Locate the actual implementation of:
+
+- protection status
+- time sink
+- total screen time
+- limited apps
+- limited websites
+- blocked app statistics
+- potential earnings/value calculation
+- app usage breakdown
+- website restriction state
+
+Do not duplicate existing business logic.
+
+Do not create a second source of truth.
+
+Do not hard-code values that already exist in the application.
+
+Reuse the existing architecture wherever possible.
+
+Before editing, identify the files responsible for:
+
+1. Zen Silo UI
+2. Protection state
+3. Screen-time data
+4. Blocked-app data
+5. Blocked-website data
+6. Value/earnings calculations
+7. Navigation
+8. Theme/design system
+
+==================================================
+3. HIGH-LEVEL DESIGN GOAL
+==================================================
+
+Redesign the screen so it feels:
 
 - sleek
 - modern
-- elegant
+- calm
 - premium
+- intentional
 - minimal
-- dark
+- sophisticated
 - slightly futuristic
-- motivational
+- alive
 
-dashboard.
+The visual language should feel appropriate for a digital-wellbeing/productivity application.
 
-The screen should feel alive without becoming visually noisy.
+It should NOT feel like:
 
-The visual language should communicate:
+- a gaming dashboard
+- a cyberpunk interface
+- a generic Material dashboard
+- a finance app
+- a settings screen
+- a collection of unrelated cards
 
-"Your potential is visible, measurable, and constantly changing."
+The emotional tone should be:
 
-The interface should feel deliberate.
+"Your digital environment is under control."
 
-Avoid:
-- excessive cards
-- excessive borders
-- excessive shadows
-- repetitive rectangles
-- too many competing colors
-- unnecessary labels
-- overly large buttons
-- clutter
-- generic Material Design appearance
-- default Android component styling
-
-The reference image should be treated as the visual direction.
+The interface should communicate calm control rather than stress.
 
 ==================================================
-3. OVERALL SCREEN STRUCTURE
+4. PRIMARY UX PRINCIPLE
 ==================================================
 
-The screen should be structured approximately like this:
+The user should understand the screen in approximately 2–3 seconds.
 
-TOP
-|
-| Header
-|
-| Radar / personal-performance visualization
-|
-| Subtle transition / visual separator
-|
-| Today's progress / action area
-|
-| Tasks
-|
-| Reminder
-|
-| Badges
-|
-| Bottom navigation
-|
-BOTTOM
+They should immediately understand:
 
-However, the screen must remain vertically scrollable where appropriate.
+1. Is protection active?
+2. What is protection doing?
+3. How much screen time/distraction is being prevented?
+4. What apps/websites are restricted?
+5. What is the impact?
 
-The radar section should receive significantly more visual importance than in the current implementation.
+The order of visual importance should roughly be:
 
-Tasks and reminders should feel like polished content rather than generic rectangular containers.
+PROTECTION STATUS
+↓
+LIVE LOTUS VISUALIZATION
+↓
+TODAY'S IMPACT
+↓
+RESTRICTIONS
+↓
+DETAILED USAGE
+
+Do not allow secondary statistics to compete visually with the protection state.
 
 ==================================================
-4. BACKGROUND
+5. SCREEN STRUCTURE
 ==================================================
 
-Use a deep near-black background.
+Redesign the screen approximately in this order:
 
-Do NOT use pure #000000 everywhere.
+HEADER
 
-Use subtle tonal differences to create depth.
+Zen Silo
+optional settings/action button
 
-Suggested visual direction:
+PROTECTION HERO
 
-Main background:
-#050505
-or a very similar near-black.
+Animated lotus
+Protection status
+Active/inactive state
+Optional supporting information
 
-Secondary surfaces:
-slightly brighter dark charcoal tones.
+IMPACT SUMMARY
 
-Use extremely subtle radial/linear gradients where appropriate.
+Time saved/recovered
+Total screen time
+Potential value/impact
 
-The screen should remain primarily black/dark.
+RESTRICTIONS
 
-The existing orange accent must remain the primary accent color.
+Limited apps
+Limited websites
 
-Use orange for:
-- active states
-- icons
-- progress
-- important controls
-- highlights
-- interaction feedback
-- radar chart
-- selected navigation state
+DISTRACTION DETAILS
 
-Avoid introducing random colors unless semantically necessary.
+Apps that account for the most time
+Detailed usage/value breakdown
 
-For example, reminder categories may use restrained secondary colors, but orange should remain the primary identity color.
+BOTTOM NAVIGATION
 
-==================================================
-5. HEADER
-==================================================
-
-At the top:
-
-Display the user's identity/title prominently.
-
-Use a typography hierarchy similar to:
-
-Small:
-"Good morning,"
-
-Large:
-"You got this ✦"
-
-The actual greeting should adapt dynamically where appropriate:
-- Good morning
-- Good afternoon
-- Good evening
-
-Do not hard-code the time of day.
-
-The user's name can be incorporated if the existing application has it, but do not make the header excessively large.
-
-Typography should feel elegant and modern.
-
-Use strong contrast.
-
-The header should have generous horizontal padding.
-
-Add a small profile/account action on the right if the current application already has a profile/settings destination.
-
-The profile icon should feel integrated into the visual system rather than looking like a default Material icon button.
+The exact layout may change based on the existing application's navigation system.
 
 ==================================================
-6. RADAR CHART — HERO ELEMENT
+6. HEADER
 ==================================================
 
-THIS IS ONE OF THE MOST IMPORTANT CHANGES.
+Keep:
 
-The radar chart should become a major visual focal point of the screen.
+"Zen Silo"
 
-The current radar chart feels too small and passive.
+as the page identity.
 
-Make it substantially larger.
+However, improve its typography and spacing.
 
-The chart should visually dominate the upper-middle section.
+The title should feel premium and intentional.
 
-The radar should represent the existing 5-axis user metrics.
+Use a strong typographic hierarchy.
 
-Do NOT replace the existing metric calculations.
+Consider:
 
-Use the real values already produced by the application.
+Zen Silo
+
+with a subtle secondary descriptor only if the existing product requires one.
+
+Do not clutter the header.
+
+If the existing screen has a settings/control button, integrate it into the header rather than placing a floating generic icon somewhere arbitrary.
 
 ==================================================
-RADAR DESIGN
+7. PROTECTION HERO — MOST IMPORTANT COMPONENT
 ==================================================
 
-Create:
+The lotus is the visual centerpiece.
 
-- 5-axis radar chart
+The current application has a static lotus image with ripples around it.
+
+Replace the static presentation with an animated status visualization.
+
+The lotus should visually communicate the current protection state.
+
+==================================================
+8. LOTUS VISUAL DESIGN
+==================================================
+
+Preserve the recognizable lotus identity from the existing design.
+
+Do not completely replace the concept.
+
+However, make the composition more sophisticated.
+
+The lotus can contain:
+
+- central lotus artwork
+- soft circular halo
 - multiple concentric rings
-- subtle grid lines
-- radial axis lines
-- labels/icons around the outside
-- orange data polygon
-- subtle orange glow
-- transparent orange fill inside the polygon
-- clean, thin geometry
+- subtle breathing glow
+- low-opacity particles/light
+- status-dependent visual changes
 
-The chart itself should NOT look like a standard spreadsheet/chart component.
+Avoid excessive decoration.
 
-It should feel custom-designed for this app.
+It should feel like a living system rather than a GIF.
+
+==================================================
+9. ACTIVE STATE
+==================================================
+
+When protection is active:
+
+The lotus should have a subtle continuous breathing animation.
+
+Recommended behavior:
+
+- scale very slightly
+- glow intensity changes subtly
+- outer ring expands slowly
+- ring fades as it expands
+- another ring follows
+- center remains visually stable
+
+The animation must be slow and calming.
+
+Do NOT create a large pulsing effect.
+
+The user should notice movement without feeling distracted.
+
+==================================================
+10. PROTECTION RIPPLES
+==================================================
+
+The current design contains static ripples.
+
+Convert them into actual animated ripples.
+
+Possible sequence:
+
+A ring originates from the lotus.
+
+It slowly expands.
+
+Opacity decreases.
+
+It disappears.
+
+A new ring begins.
+
+Use staggered timing.
+
+However:
+
+Do not animate too many rings simultaneously.
+
+Keep the motion elegant and subtle.
+
+The animation should communicate:
+
+"Protection is continuously active."
+
+==================================================
+11. PROTECTION STATE TEXT
+==================================================
+
+Instead of placing:
+
+"Protection is active"
+
+as a passive sentence beneath the image, turn it into a clear status component.
+
+Example conceptual structure:
+
+● PROTECTED
+
+Protection is active
+
+or:
+
+Protected
+Blocking distractions
+
+Use typography and visual treatment to establish a clear status hierarchy.
+
+The status should be instantly understandable.
+
+Orange can be used here because it carries semantic meaning:
+
+ACTIVE / PROTECTED.
+
+Do not use orange for every element on the page.
+
+==================================================
+12. INACTIVE STATE
+==================================================
+
+The animation system must support an inactive state.
+
+When protection is disabled:
+
+- lotus becomes subdued
+- glow becomes minimal
+- ripples stop
+- active orange becomes muted
+- status changes clearly
+- UI provides an obvious action to enable protection
+
+Example:
+
+Protection paused
+
+[ Enable Protection ]
+
+The inactive state must be visually distinct from the active state.
+
+Do not rely exclusively on color.
+
+==================================================
+13. EVENT-DRIVEN LOTUS ANIMATION
+==================================================
+
+Make the lotus respond to actual protection events.
+
+When an app is blocked:
+
+Trigger a brief visual reaction.
+
+Example:
+
+- pulse
+- short brighter glow
+- one expanding ripple
+- subtle scale change
+
+When a website is blocked:
+
+Use a similar but slightly different event reaction.
+
+When protection begins:
+
+Use a stronger activation animation.
+
+When protection stops:
+
+Use a graceful fade-out/deactivation animation.
+
+These animations should communicate actual state changes.
+
+Do not animate randomly.
+
+==================================================
+14. IMPACT METRICS
+==================================================
+
+The current screen has:
+
+Time Sink
+Total Screen Time
+
+Improve the presentation dramatically.
+
+These numbers should become visually readable metrics.
+
+Instead of tiny labels and dashes, use:
+
+TIME RECOVERED
+1h 42m
+
+SCREEN TIME
+3h 18m
+
+Use the application's actual data.
+
+Do not invent statistics.
+
+Use a hierarchy where the numbers are significantly more prominent than their labels.
+
+==================================================
+15. NUMBER ANIMATIONS
+==================================================
+
+When metrics update:
+
+Do not instantly replace the values.
+
+Animate numeric transitions.
+
+Example:
+
+1h 35m
+→
+1h 42m
+
+The numbers should smoothly interpolate where appropriate.
+
+Keep the animation short.
+
+The user should perceive it as responsive feedback.
+
+==================================================
+16. DAY-TO-DAY CONTEXT
+==================================================
+
+Where existing data supports it, display a subtle comparison.
+
+Examples:
+
+↓ 18% from yesterday
+
+or:
+
+12m less than yesterday
+
+Only show comparisons when the underlying data genuinely supports them.
+
+Never create fake trends.
+
+This information should remain secondary.
+
+==================================================
+17. RESTRICTION SECTION
+==================================================
+
+Create a section for:
+
+Limited Apps
+Limited Websites
+
+However, do NOT make them two generic identical cards.
+
+They should have strong semantic identity.
+
+For example:
+
+LIMITED APPS
+12 blocked
+
+LIMITED WEBSITES
+8 blocked
+
+Use different icons that immediately communicate their purpose.
+
+Examples:
+
+Apps:
+app/grid/app-lock style icon
+
+Websites:
+globe/browser style icon
+
+The icons should not all have identical visual weight.
+
+==================================================
+18. ICON COLOR SYSTEM
+==================================================
+
+This is a major problem in the existing screen.
+
+Currently many icons and buttons use the same orange.
+
+Do not do that.
+
+Create a restrained semantic hierarchy.
+
+Suggested system:
+
+Orange:
+primary action
+active protection
+important positive status
+
+Neutral/light:
+secondary information
+normal navigation
+supporting controls
+
+Muted gray:
+inactive states
+metadata
+secondary labels
+
+Optional restrained secondary accent:
+categorization only, if necessary
+
+Do NOT use multiple bright accent colors everywhere.
+
+The interface should remain visually calm.
+
+==================================================
+19. BUTTON DESIGN
+==================================================
+
+The current orange circular buttons feel repetitive.
+
+Replace them with more intentional controls.
+
+Primary controls should use the application's main accent.
+
+Secondary controls should be neutral or tonal.
+
+Examples:
+
+Primary:
+Enable protection
+
+Secondary:
+Manage apps
+
+Secondary:
+Manage websites
+
+Do not make every card contain a bright orange circular button.
+
+==================================================
+20. "APPS THAT WASTE YOUR TIME"
+==================================================
+
+This is useful information but currently looks like another generic card.
+
+Redesign it as a meaningful summary.
+
+Possible structure:
+
+Apps taking your time
+
+Instagram                  42m
+YouTube                    31m
+TikTok                     24m
+
+or:
+
+Top distractions
+
+Instagram       42m
+YouTube         31m
+TikTok          24m
+
+Only use real data from the application.
+
+The user should be able to immediately identify where their attention is going.
+
+==================================================
+21. TOP DISTRACTION VISUALIZATION
+==================================================
+
+Consider using:
+
+- short horizontal usage bars
+- subtle progress indicators
+- compact rows
+- app icons
+- time labels
+
+Avoid turning this into a complicated chart.
+
+A simple ranked list should be enough.
+
+Example:
+
+Instagram
+██████████
+42m
+
+YouTube
+███████
+31m
+
+TikTok
+██████
+24m
+
+The bars should use restrained visual treatment.
+
+Orange should indicate important/highest-impact data, not every bar.
+
+==================================================
+22. APP ICONS
+==================================================
+
+Use real app icons if the application already obtains them.
+
+Do not use generic placeholder symbols when real app information is available.
+
+App icons should be small and consistent.
+
+Avoid making app icons visually louder than the usage statistics.
+
+==================================================
+23. VALUE / EARNINGS SECTION
+==================================================
+
+The current:
+
+"You could've earned"
+
+section feels visually disconnected.
+
+Redesign it into an impact section.
+
+Possible concept:
+
+TIME / VALUE AT RISK
+
+$12.40
+
+Estimated value associated with your distraction time.
+
+Then optionally show contributing apps below.
+
+Example:
+
+Instagram       42m      $4.20
+YouTube         31m      $3.10
+TikTok          24m      $2.40
+
+Use the application's actual calculation.
+
+Do not imply guaranteed earnings if the metric is only an estimate.
+
+The wording must accurately represent what the existing calculation means.
+
+==================================================
+24. EMPTY STATES
+==================================================
+
+Never show large empty cards filled with placeholder text.
+
+If no distracting apps have been recorded:
+
+You are clear.
+
+No significant distractions detected.
+
+or an equivalent concise message.
+
+If no limited apps exist:
+
+No apps are currently restricted.
+
+[ Manage apps ]
+
+If no limited websites exist:
+
+No websites are currently restricted.
+
+[ Manage websites ]
+
+The empty state should feel intentional and calm.
+
+==================================================
+25. CARD SYSTEM
+==================================================
+
+Reduce the number of visually identical cards.
+
+Use three visual levels:
+
+LEVEL 1 — HERO
+Protection/lotus
+
+LEVEL 2 — IMPORTANT
+Metrics/restrictions
+
+LEVEL 3 — DETAIL
+Usage/value breakdown
+
+Different hierarchy should be communicated through:
+
+- spacing
+- typography
+- tonal surfaces
+- size
+- emphasis
+
+Not merely by adding borders.
+
+==================================================
+26. BORDER USAGE
+==================================================
+
+Avoid outlining every component.
+
+The current UI relies heavily on outlined rounded rectangles.
+
+Replace many borders with:
+
+- tonal contrast
+- subtle surfaces
+- shadows
+- gradients
+- spacing
+- small dividers
+
+Borders should be used selectively.
+
+==================================================
+27. SURFACE DESIGN
+==================================================
+
+Use subtle dark surfaces against the near-black background.
+
+Do not make every surface identical.
+
+Example hierarchy:
+
+Background:
+near-black
+
+Primary surface:
+slightly lighter charcoal
+
+Secondary surface:
+slightly different charcoal
+
+Primary accent:
+orange
+
+This creates depth without requiring excessive gradients.
+
+==================================================
+28. TYPOGRAPHY
+==================================================
+
+Use typography to communicate hierarchy.
 
 Suggested hierarchy:
 
-Outer grid:
-very low opacity
+Page title:
+strong
 
-Inner grid:
-slightly stronger
+Protection status:
+medium/strong
 
-Data polygon:
-high visibility
+Hero status:
+large
 
-Data fill:
-low-opacity orange
-
-Data points:
-small glowing circles with slight ripples
-
-The orange data shape should be the visual focus.
-
-==================================================
-RADAR ANIMATION
-==================================================
-
-The radar should animate when the screen appears.
-
-Animation sequence:
-
-1. Radar grid fades in.
-2. Axis lines subtly appear.
-3. Data polygon grows from the center outward.
-4. Data points appear.
-5. Orange glow becomes slightly stronger.
-6. Labels/icons fade in.
-
-Use smooth easing.
-
-Do NOT use a cheap "spinning chart" animation.
-
-The chart should feel like it is being constructed.
-
-Suggested duration:
-approximately 600–1000ms total.
-
-The animation should be subtle enough that users do not find it annoying.
-
-==================================================
-LIVE RADAR UPDATES
-==================================================
-
-When the user's statistics change:
-
-DO NOT instantly snap the radar polygon to the new values.
-
-Animate from:
-
-previous values
-→
-new values
-
-Interpolate each axis smoothly.
-
-This should make the radar feel alive.
-
-Example:
-
-Focus:
-72 → 78
-
-Instead of changing instantly, animate:
-
-72
-73
-74
-75
-76
-77
-78
-
-while simultaneously morphing the polygon.
-
-The chart should react naturally to changes in user performance.
-
-==================================================
-RADAR INTERACTION
-==================================================
-
-Allow tapping an axis/metric where practical.
-
-When the user taps a metric:
-
-- highlight that axis
-- slightly increase the icon/label emphasis
-- subtly highlight the corresponding radar point
-- show the metric name
-- show its current value
-- optionally show a short contextual description if existing product logic supports it
-
-Do not open an enormous dialog.
-
-A small elegant tooltip/overlay is preferred.
-
-For example:
-
-FOCUS
-78%
-
-The interaction should disappear naturally when the user taps elsewhere.
-
-==================================================
-7. RADAR METRIC LABELS
-==================================================
-
-Each radar axis should have:
-
-- an icon
-- metric name
-- value
-
-Example:
-
-Focus
-78%
-
-Discipline
-81%
-
-Productivity
-65%
-
-Energy
-72%
-
-Mood
-68%
-
-Use the ACTUAL application's five existing metrics rather than blindly replacing them.
-
-Icons should be:
-
-- simple
-- thin
-- orange
-- visually consistent
-- recognizable
-
-Do not use giant icons.
-
-The labels should sit outside the radar chart without overlapping it.
-
-Make sure the layout works across different Android screen sizes.
-
-Do NOT hard-code pixel coordinates that only work on one device.
-
-==================================================
-8. RADAR ↔ REST OF SCREEN TRANSITION
-==================================================
-
-Do not end the radar section with a harsh rectangular boundary.
-
-Create a subtle visual transition.
-
-A gentle dark/orange gradient or organic curved shape can transition from the radar area into the content section.
-
-The transition should feel intentional and premium.
-
-Avoid decorative effects that make the UI look like a gaming HUD.
-
-The overall aesthetic is closer to:
-
-Apple-quality minimalism
-+
-premium productivity app
-+
-subtle futuristic visual identity.
-
-==================================================
-9. TODAY'S PROGRESS / ACTION AREA
-==================================================
-
-Introduce a cleaner progress/action area below the radar.
-
-This should replace the repetitive empty-card feeling.
-
-Use one visually important container.
-
-It should communicate something like:
-
-Today's progress: which should Include the average of all 5 axes.
-
-summation of values from all 5 axis / 5
-
-with a horizontal progress bar.
-
-The progress bar should animate when it changes.
-
-The plus button should be integrated into the container.
-
-The button should not look like a floating Material button placed randomly on top of the interface.
-
-It should feel intentionally designed into the component.
-
-==================================================
-10. PLUS BUTTON
-==================================================
-
-The "+" button is important.
-
-Design it as:
-
-- circular
-- orange
-- slightly glowing
-- premium
-- tactile
-
-Use a subtle outer glow.
-
-When idle:
-
-very subtle breathing/pulse animation.
-
-DO NOT constantly pulse aggressively.
-
-When pressed:
-
-- slightly scale down
-- brighten
-- release with a soft spring animation
-
-This should give the button physicality.
-
-==================================================
-11. ADD MENU INTERACTION
-==================================================
-
-When the user taps "+":
-
-Do NOT immediately throw the user into a generic default dialog.
-
-Instead, introduce an elegant action selection.
-
-For example:
-
-+ Add
-
-Task
-Reminder
-
-This can appear as:
-
-- bottom sheet
-- floating expansion
-- compact action menu
-
-Use whichever pattern fits the existing app architecture best.
-
-The appearance should animate from the "+" button.
-
-Recommended animation:
-
-1. Button subtly expands.
-2. Two action choices fade/slide upward.
-3. Background becomes slightly dimmer.
-4. User selects Task or Reminder.
-
-The transition should feel connected to the button.
-
-==================================================
-12. TASK SECTION
-==================================================
-
-The task section should be substantially more elegant than the current design.
-
-Instead of:
-
-Tasks
-+
-large empty rectangle
-
-Use:
-
-Tasks                         See all >
-
-Then a vertical list of task items.
-
-Each task item should have:
-
-- completion control
-- task title
-- optional time
-- optional metadata
-- subtle container/surface
-- clean spacing
-- strong hierarchy
-
-Avoid excessive borders.
-
-The cards should look almost like soft floating surfaces.
-
-==================================================
-13. TASK CARD DESIGN
-==================================================
-
-Example visual hierarchy:
-
-[ ○ ]  Morning workout
-       08:00 AM                                      >
-
-The completion control should be custom styled.
-
-For incomplete:
-
-thin circular outline.
-
-For complete:
-
-orange filled circle
-+
-checkmark.
-
-Task titles should be clearly readable.
-
-Secondary information should be smaller and lower contrast.
-
-The right-side chevron should be subtle.
-
-Do not visually overpower the title.
-
-==================================================
-14. TASK COMPLETION ANIMATION
-==================================================
-
-When a task is completed:
-
-1. Circle animates from outline → orange.
-2. Checkmark draws/appears smoothly.
-3. A subtle highlight travels across the row.
-4. The task text transitions to the completed state.
-5. If the existing product logic changes the radar statistics, allow the radar to animate toward its new values.
-6. Update progress statistics smoothly.
-
-Do not immediately remove the item from the screen.
-
-The user needs visual confirmation.
-
-Use a short, polished transition.
-
-==================================================
-15. TASK DELETION
-==================================================
-
-Preserve the existing swipe-to-delete functionality.
-
-The current app concept includes:
-
-Swipe right on a task card
-→ reveal deletion action.
-
-Keep this interaction.
-
-Improve it visually.
-
-During swipe:
-
-- task card follows finger naturally
-- delete action appears progressively
-- progress/circular icon can reduce opacity
-- deletion affordance should become clearer as the swipe increases
-- use a smooth threshold
-
-Do NOT use abrupt jumps.
-
-If the user releases before the deletion threshold:
-
-→ card returns to original position.
-
-If the user passes the threshold:
-
-→ deletion completes with a polished exit animation.
-
-Preserve the existing backend behavior and task counters.
-
-==================================================
-16. REMINDER SECTION
-==================================================
-
-Use the same visual language as Tasks but do not make it feel like a duplicated section.
-
-Header:
-
-Reminders                             See all >
-
-Reminder items should have:
-
-- reminder icon
-- reminder title
-- time/date
-
-Use subtle visual differences to distinguish reminders from tasks.
-
-Do not simply create another identical card design.
-
-The user should immediately understand:
-
-Tasks = actions I need to complete
-
-Reminders = things I need to remember.
-
-==================================================
-17. REMINDER CREATION
-==================================================
-
-Tapping the reminder add action should use the same elegant interaction system as tasks.
-
-The input flow should feel simple.
-
-Prioritize:
-
-- title
-- time/date
-- frequency of the reminder
-
-Do not overload the first screen with unnecessary settings.
-
-Secondary options can appear progressively.
-
-Use animated transitions between states.
-
-==================================================
-18. EMPTY STATES
-==================================================
-
-This is especially important.
-
-Do NOT show giant empty rectangular boxes saying:
-
-"Task free..."
-"Reminder-free mind!"
-"Wow, such empty!"
-
-The current empty-state presentation wastes space.
-
-Instead use compact empty states.
-
-For example:
-
-Tasks
-
-No tasks for today
-Take a moment to plan your next move
-
-[ + Add task ]
-
-Make this feel intentional rather than like missing content.
-
-For reminders:
-
-No reminders yet
-Keep something important on your radar
-
-[ + Add reminder ]
-
-For badges:
-
-Use the space more meaningfully.
-
-==================================================
-19. BADGES
-==================================================
-
-Badges should not simply be:
-
-Badges >
-[empty card]
-
-Create a small preview section.
-
-For example:
-
-Badges                              See all >
-
-[ badge ][ badge ][ badge ]
-
-If no badges exist:
-
-show a compact motivational placeholder.
-
-Example:
-
-Your first badge is waiting.
-
-Do not make empty states visually dominant.
-
-==================================================
-20. SCROLLING
-==================================================
-
-The entire screen should scroll naturally.
-
-The radar should appear as a visual hero section at the top.
-
-When scrolling:
-
-- avoid excessive parallax
-- optionally allow a tiny amount of motion on decorative glow elements
-- preserve readability
-- prevent jitter
-
-The interface should feel smooth at 60/120 FPS where the device supports it.
-
-==================================================
-21. BOTTOM NAVIGATION
-==================================================
-
-If the existing app has bottom navigation:
-
-redesign it to match the new visual language.
-
-Use:
-
-- dark surface
-- subtle separation
-- simple icons
-- selected icon in orange
-- selected label in orange or stronger contrast
-- unselected items in subdued gray
-
-Keep it minimal.
-
-Do not turn it into a large floating pill unless that fits the existing application.
-
-Navigation should remain persistent and predictable.
-
-Follow Android accessibility and touch target guidelines.
-
-The system navigation bar (android) should be the same color as the app navigation bar.
-
-==================================================
-22. TYPOGRAPHY
-==================================================
-
-Typography needs to create hierarchy.
-
-Use the project's existing font if one already exists.
-
-Otherwise use a high-quality system font or an appropriate bundled font already available in the project.
-
-Hierarchy:
-
-Hero heading:
-large / bold
+Metrics:
+large numeric values
 
 Section headings:
-medium-large / semibold
-
-Primary content:
-regular / medium
+medium
 
 Metadata:
-small / low contrast
+small
 
-Avoid using too many weights.
+Supporting descriptions:
+small/low contrast
 
-The word "Yourself" / major branding text may retain the more elegant serif/italic personality seen in the original design if that is already part of the app's identity.
+Do not use excessive font weights.
 
-Use a modern sans-serif for functional UI.
+Do not make every label uppercase.
 
-This creates an intentional contrast:
-
-Elegant personality
-+
-modern usability.
+Uppercase can be used selectively for tiny category labels.
 
 ==================================================
-23. SPACING
+29. SPACING
 ==================================================
+
+Introduce much more intentional spacing.
+
+Major sections should be clearly separated.
+
+Avoid the sensation of:
+
+card
+card
+card
+card
+
+Instead the screen should feel like a continuous visual narrative.
 
 Use a consistent spacing system.
 
-Do not manually tune every element independently.
+Suggested spacing scale:
 
-Use a baseline spacing scale such as:
+4dp
+8dp
+12dp
+16dp
+20dp
+24dp
+32dp
 
-4
-8
-12
-16
-20
-24
-32
-
-Use larger spacing between major sections.
+Use larger spacing between sections.
 
 Use smaller spacing inside components.
 
-The interface should breathe.
-
-The current design feels like multiple isolated boxes.
-
-The new design should feel like one continuous composition.
-
 ==================================================
-24. CORNERS AND SHAPES
+30. LOTUS ANIMATION PERFORMANCE
 ==================================================
 
-Use consistent corner radii.
+The lotus animation must be efficient.
 
-Suggested hierarchy:
+Do not continuously redraw expensive elements unnecessarily.
 
-Design principle:
-The corner radii of elements should be 22.5% of the shorter side of the rectangle.
+Prefer efficient Android animation APIs and the project's current framework.
 
-Large containers:
-20–28dp
+Avoid:
 
-Normal cards:
-16–20dp
+- excessive blur
+- giant bitmap effects
+- unnecessary particle systems
+- expensive continuous canvas operations
 
-Buttons:
-circular or 14–18dp depending on component
-
-Avoid mixing many unrelated corner radii.
-
-The design should feel cohesive.
+The animation should remain smooth on mid-range Android devices.
 
 ==================================================
-25. BORDERS
+31. SCROLL BEHAVIOR
 ==================================================
 
-Do not outline every component with obvious gray borders.
+The full content area should scroll naturally.
 
-Use:
+The top hero should remain visually important.
 
-- subtle tonal differences
-- very low-opacity strokes
-- shadows
-- gradients
-- separation through spacing
+Do not make the entire screen feel like a giant scrolling list of cards.
 
-Only use borders where they genuinely improve clarity.
+Consider subtle motion while scrolling, but keep it restrained.
 
-This directly addresses the current screen's repetitive visual pattern.
+Do not use dramatic parallax.
 
 ==================================================
-26. ORANGE ACCENT
+32. INTERACTION WITH PROTECTION STATUS
 ==================================================
 
-Orange is the primary accent.
+The protection hero should be interactive.
 
-Use it carefully.
+Possible behavior:
 
-Orange should mean:
+Tap protection hero
+→ open protection controls/details.
 
-- action
-- progress
-- active
-- important
-- achievement
-- feedback
+Do not hide important controls inside animation.
 
-Do not make the entire interface orange.
-
-The power of the design should come from contrast:
-
-black
-+
-dark charcoal
-+
-small amounts of glowing orange.
+The active state must still be understandable for users who do not interact.
 
 ==================================================
-27. MICRO-INTERACTIONS
+33. LIMITED APPS INTERACTION
 ==================================================
 
-The application should feel alive.
+Tapping:
 
-Add subtle animations for:
+Limited Apps
 
-- page appearance
-- radar chart
-- radar updates
-- task completion
-- task deletion
-- reminder creation
-- plus button
-- section appearance
-- progress bar
-- navigation selection
-- button presses
+should open the existing app restriction management screen.
 
-Animations must be:
+The transition should feel intentional.
+
+The card should provide tactile feedback.
+
+When pressed:
+
+- slight scale or tonal change
+- subtle ripple
+- immediate navigation
+
+Do not create a new management screen unless the project does not already have one.
+
+==================================================
+34. LIMITED WEBSITES INTERACTION
+==================================================
+
+Tapping:
+
+Limited Websites
+
+should open the existing website restriction management screen.
+
+Use the same interaction principles as Limited Apps.
+
+However, visually distinguish the concept through iconography/content rather than making the entire component a different bright color.
+
+==================================================
+35. APP BLOCK EVENT
+==================================================
+
+When an application is blocked:
+
+The Zen Silo screen should be capable of reflecting the event.
+
+For example:
+
+- blocked counter increments
+- time/value metrics update
+- lotus briefly reacts
+- usage list updates
+- values animate
+
+Do not reload the entire screen abruptly.
+
+Updates should feel continuous.
+
+==================================================
+36. PROTECTION TOGGLE
+==================================================
+
+If the existing application allows protection to be enabled/disabled:
+
+The interaction should feel important.
+
+When enabling:
+
+1. User initiates action.
+2. UI confirms intent if required.
+3. Lotus activation animation begins.
+4. Protection state changes.
+5. Supporting UI updates.
+6. Control returns to stable active state.
+
+When disabling:
+
+1. Lotus animation winds down.
+2. State changes.
+3. UI clearly communicates inactive mode.
+
+Preserve all existing backend/service behavior.
+
+==================================================
+37. MICRO-INTERACTIONS
+==================================================
+
+Add purposeful animation to:
+
+- protection activation
+- protection deactivation
+- lotus idle state
+- blocking events
+- number changes
+- restriction card presses
+- list updates
+- navigation
+- buttons
+- expandable detail sections
+
+Animations should feel:
 
 - fast
+- elegant
+- smooth
 - intentional
-- subtle
-- physically believable
 
 Avoid:
-- constant bouncing
-- excessive scaling
-- long transitions
-- random decorative animations
-- distracting particle effects.
 
-The user should feel the interface reacting, not watching an animation demo.
+- bouncing everything
+- constant pulsing
+- flashy gradients
+- excessive spring animations
+- animation for decoration alone
 
-==================================================
-28. SCREEN ENTRY ANIMATION
-==================================================
-
-When the screen opens:
-
-Do not animate everything independently.
-
-Use a coordinated entrance.
-
-Suggested sequence:
-
-0–150ms:
-header fades/slides in
-
-100–500ms:
-radar appears
-
-300–650ms:
-progress component appears
-
-450–800ms:
-task content appears
-
-600–900ms:
-reminder/badge content appears
-
-Keep movement extremely subtle.
-
-The radar is the primary animation.
+Every animation should communicate something.
 
 ==================================================
-29. PERFORMANCE
+38. MOTION LANGUAGE
 ==================================================
 
-This is a real mobile application.
+Define a coherent motion system.
 
-Do not sacrifice performance for visual effects.
+Examples:
 
-Avoid:
-- unnecessary recomposition
-- excessive blur
-- expensive continuous animations
-- unnecessary canvas redraws
-- huge bitmaps
-- unbounded state updates
+Small interaction:
+100–180ms
 
-The radar chart should be implemented efficiently.
+Normal component transition:
+200–300ms
 
-Animations should stop when not needed.
+Hero animation:
+500–1000ms
 
-Respect lifecycle.
+Ambient lotus animation:
+slow and continuous
 
-Do not leak coroutines/listeners.
+Use appropriate easing.
+
+Avoid arbitrary animation durations.
+
+Animations should feel like they belong to the same application.
 
 ==================================================
-30. ACCESSIBILITY
+39. ACCESSIBILITY
 ==================================================
-
-The redesign must still be accessible.
 
 Ensure:
 
-- adequate contrast
-- minimum touch target sizes
-- meaningful content descriptions
-- screen-reader labels
-- non-color-only state communication
-- accessible task completion controls
-- accessible swipe/delete behavior
-- sensible text scaling
+- sufficient contrast
+- accessible text sizes
+- correct content descriptions
+- meaningful screen-reader labels
+- large enough touch targets
+- no state communicated only through color
+- reduced-motion compatibility where practical
 
-The visual design should not come at the cost of usability.
+If the system requests reduced motion:
+
+- minimize or disable continuous lotus animation
+- preserve state communication
+- preserve functionality
 
 ==================================================
-31. RESPONSIVE DESIGN
+40. RESPONSIVE DESIGN
 ==================================================
 
-DO NOT design for one exact screenshot size.
+The screenshot is only a visual reference.
 
-The attached reference is only a visual target.
+Do NOT hard-code exact screen coordinates.
 
 Support:
 
 - small Android phones
-- modern tall phones
+- tall phones
 - different aspect ratios
 - different densities
-- accessibility font scaling where possible
+- text scaling
 
-The radar must resize intelligently.
+The lotus should resize intelligently.
 
-Labels must avoid collisions.
+Text should not overlap.
 
-Nothing should be clipped.
+Metrics should wrap gracefully.
 
-Nothing should rely on absolute screen coordinates.
-
-==================================================
-32. DATA / BACKEND INTEGRITY
-==================================================
-
-IMPORTANT:
-
-The visual redesign must NOT break existing backend behavior.
-
-Preserve all existing task statistics and functionality.
-
-In particular, existing task logic should continue to correctly handle:
-
-- task creation
-- task completion
-- task deletion
-- scheduled task count
-- completed task count
-- radar/statistics calculations
-
-If Supabase is already integrated:
-
-- reuse the existing Supabase client/repository layer
-- do not instantiate a new client unnecessarily
-- do not move database code into UI components
-- do not duplicate backend logic
-
-UI state should react to the existing data source.
+Cards should not become distorted on unusual screen sizes.
 
 ==================================================
-33. COMPONENT ARCHITECTURE
+41. BUSINESS LOGIC / DATA INTEGRITY
 ==================================================
 
-Break the screen into sensible reusable components.
+This is extremely important.
 
-For example:
+Do not break:
 
-YourselfScreen
-├── YourselfHeader
-├── PerformanceRadar
-│   ├── RadarGrid
-│   ├── RadarPolygon
-│   ├── RadarPoint
-│   └── RadarMetricLabel
-├── DailyProgressCard
-├── SectionHeader
-├── TaskList
-│   └── TaskItem
-├── ReminderList
-│   └── ReminderItem
-├── BadgePreview
+- screen-time tracking
+- app blocking
+- website blocking
+- restriction state
+- protection state
+- usage calculations
+- value calculations
+- navigation
+- backend synchronization
+
+If Supabase or another backend is already in the application:
+
+reuse the existing client/repositories/services.
+
+Do not instantiate duplicate clients.
+
+Do not move backend calls directly into UI components.
+
+Keep data and presentation separated.
+
+==================================================
+42. ARCHITECTURE
+==================================================
+
+Keep the screen modular.
+
+Use appropriate reusable components.
+
+Conceptually:
+
+ZenSiloScreen
+├── ZenSiloHeader
+├── ProtectionHero
+│   ├── LotusVisualization
+│   ├── ProtectionStatus
+│   └── ProtectionControls
+├── ImpactSummary
+│   ├── TimeRecoveredMetric
+│   └── ScreenTimeMetric
+├── RestrictionsSection
+│   ├── LimitedAppsCard
+│   └── LimitedWebsitesCard
+├── DistractionSection
+│   ├── TopDistractionHeader
+│   └── DistractionItem
+├── ValueImpactSection
+│   └── ValueItem
 └── BottomNavigation
 
-Use names appropriate to the existing project's architecture.
+Use names appropriate to the existing project.
 
-Do not create one giant 1000+ line screen file.
-
-Keep UI, business logic, and data concerns separated.
+Do not create one massive screen file.
 
 ==================================================
-34. STATE MANAGEMENT
+43. DO NOT REBUILD UNRELATED SCREENS
 ==================================================
 
-Do not introduce local state that duplicates existing application state.
+Only modify components necessary to support this redesign.
 
-The screen should react to real state.
+Do not rewrite:
 
-Examples:
+- authentication
+- unrelated screens
+- unrelated repositories
+- unrelated navigation
+- unrelated backend systems
 
-tasks update
-→ task list updates
-→ progress updates
-→ statistics update
-→ radar animates to new values.
-
-A reminder is created
-→ reminder list updates
-→ UI animates naturally.
-
-A task is deleted
-→ backend updates
-→ local state updates correctly
-→ progress/statistics update.
+unless the redesign genuinely requires a small shared component change.
 
 ==================================================
-35. DESIGN DETAILS FROM THE REFERENCE
+44. DESIGN CONSISTENCY WITH THE REST OF THE APP
 ==================================================
 
-Use these visual characteristics from the attached reference:
+The screen should feel like it belongs to the same application as the redesigned "Yourself" screen.
 
-- near-black background
-- warm orange accent
-- subtle orange glow
-- spacious layout
+Maintain the existing app identity:
+
+- dark aesthetic
 - elegant typography
-- large radar visualization
-- clear metric labels
-- curved/organic transition below the radar
-- premium dark surfaces
-- minimal card borders
-- rounded components
-- polished circular plus button
-- compact task rows
-- compact reminder rows
-- clear section headings
-- restrained bottom navigation
-- strong visual hierarchy
-- minimal clutter
+- orange as the primary accent
+- minimal UI
+- subtle modern motion
 
-Do not blindly reproduce every pixel.
+However, Zen Silo should have its own visual personality.
 
-Instead reproduce the DESIGN LANGUAGE and interaction philosophy.
+It should feel calmer and more protective than the "Yourself" screen.
+
+Think:
+
+Yourself = personal performance
+
+Zen Silo = digital protection / calm / control
 
 ==================================================
-36. WHAT SHOULD CHANGE FROM THE CURRENT SCREEN
+45. VISUAL HIERARCHY TEST
 ==================================================
 
-The current screen has several problems:
+When looking at the finished screen for one second, the eye should go approximately:
 
-1. Too many visually similar rectangular cards.
-2. Empty sections consume too much vertical space.
-3. Radar chart feels too small.
-4. Tasks/reminders feel disconnected from the rest of the screen.
-5. Plus buttons feel attached rather than integrated.
-6. There is little visual hierarchy.
-7. There is not enough motion or feedback.
-8. The page does not strongly communicate what deserves attention first.
-9. The interface has too many repetitive patterns.
-10. The screen does not yet feel like a premium finished product.
+1. Lotus / protection status
+2. Main metric
+3. Restrictions
+4. Supporting information
+5. Detailed usage
 
-The redesigned version should directly solve these problems.
+If all elements appear equally important, redesign the hierarchy.
 
 ==================================================
-37. IMPORTANT UX PRINCIPLE
+46. REMOVE VISUAL REPETITION
 ==================================================
 
-The user should understand the entire screen in roughly 2–3 seconds.
+The current screen has too many repeated patterns:
 
-At a glance they should know:
+- same orange icon treatment
+- same orange circular buttons
+- same outlined rectangular cards
+- similar text arrangement
 
-1. How am I doing?
-2. What is my current potential/performance?
-3. What do I need to do?
-4. What do I need to remember?
-5. What can I do next?
+Actively eliminate this repetition.
 
-The screen should never make the user hunt for important actions.
+Use variation through:
 
-==================================================
-38. IMPLEMENTATION PROCESS
-==================================================
-
-Work in this order:
-
-PHASE 1 — INSPECT
-- understand codebase
-- locate screen
-- locate data/state
-- locate theme
-- locate navigation
-
-PHASE 2 — ARCHITECTURE
-- determine reusable components
-- determine where the redesign should live
-- identify any existing technical limitations
-
-PHASE 3 — BUILD VISUAL FOUNDATION
-- background
-- theme
+- scale
+- spacing
 - typography
-- spacing
-- shapes
-- colors
+- icon treatment
+- surface treatment
+- content density
 
-PHASE 4 — BUILD RADAR
-- grid
-- polygon
-- points
-- labels
-- animation
-- interactions
-- live interpolation
-
-PHASE 5 — BUILD PROGRESS
-- progress card
-- animated progress
-- integrated add button
-
-PHASE 6 — BUILD TASKS
-- section
-- task items
-- completion
-- swipe-to-delete
-- transitions
-
-PHASE 7 — BUILD REMINDERS
-- section
-- items
-- add flow
-
-PHASE 8 — BUILD BADGES
-- preview
-- empty state
-
-PHASE 9 — NAVIGATION
-- bottom navigation
-- selected/unselected states
-
-PHASE 10 — POLISH
-- micro-interactions
-- animation timing
-- spacing
-- accessibility
-- responsiveness
-- performance
+But maintain enough consistency that the UI still feels like one system.
 
 ==================================================
-39. VALIDATION
+47. VISUAL RESTRAINT
+==================================================
+
+Do not add effects simply because they are possible.
+
+Avoid:
+
+- excessive glow
+- excessive blur
+- giant shadows
+- particle explosions
+- constant movement
+- multiple bright accent colors
+- huge gradients
+- overly complicated charts
+
+The interface should feel expensive because it is restrained.
+
+==================================================
+48. IMPLEMENTATION PROCESS
+==================================================
+
+Follow this exact workflow:
+
+PHASE 1
+Inspect existing implementation.
+
+PHASE 2
+Identify current architecture and dependencies.
+
+PHASE 3
+Create/refine design tokens.
+
+PHASE 4
+Rebuild the header.
+
+PHASE 5
+Rebuild the protection hero.
+
+PHASE 6
+Implement animated lotus.
+
+PHASE 7
+Implement protection-state interactions.
+
+PHASE 8
+Rebuild impact metrics.
+
+PHASE 9
+Rebuild limited app/website controls.
+
+PHASE 10
+Rebuild top distraction section.
+
+PHASE 11
+Rebuild value/impact section.
+
+PHASE 12
+Add transitions and micro-interactions.
+
+PHASE 13
+Validate responsiveness/accessibility.
+
+PHASE 14
+Build and test the entire application.
+
+==================================================
+49. TESTING REQUIREMENTS
 ==================================================
 
 After implementation:
 
 1. Compile the project.
-2. Fix all compilation errors.
-3. Fix warnings that are directly related to your changes.
-4. Run the application.
-5. Inspect the redesigned screen.
-6. Compare it against the attached reference.
-7. Check multiple screen dimensions if possible.
-8. Verify scrolling.
-9. Verify task creation.
-10. Verify task completion.
-11. Verify task deletion.
-12. Verify reminder creation.
-13. Verify radar updates.
-14. Verify statistics remain accurate.
-15. Verify navigation.
-16. Verify animations.
-17. Verify accessibility.
+2. Resolve compilation errors.
+3. Run the application.
+4. Open Zen Silo.
+5. Verify protection active state.
+6. Verify protection inactive state.
+7. Verify lotus animation.
+8. Verify blocking events.
+9. Verify screen-time numbers.
+10. Verify restriction counts.
+11. Verify app navigation.
+12. Verify website navigation.
+13. Verify detailed usage.
+14. Verify value calculations.
+15. Verify scrolling.
+16. Verify text scaling.
+17. Verify touch targets.
+18. Verify performance.
 
-Do not stop after writing the UI code.
+Do not stop after compiling.
 
-The task is only complete when the screen actually works.
+Actually inspect the rendered result.
 
 ==================================================
-40. FINAL QUALITY BAR
+50. REFERENCE IMAGE
 ==================================================
 
-The final result should feel like a polished production app from a professional product/design team.
+Treat the attached screenshot as a reference for:
 
-Ask yourself:
+- existing layout
+- existing lotus identity
+- existing content
+- existing information
+- current brand feel
 
-- Does the radar feel like the hero?
-- Does orange feel intentional rather than excessive?
-- Does the page breathe?
-- Are tasks easy to scan?
-- Are empty states elegant?
-- Is the add interaction satisfying?
-- Do animations communicate state?
-- Does completion feel rewarding?
-- Does deletion feel natural?
-- Does the screen feel cohesive?
-- Does anything look like a default Android component?
-- Are there unnecessary boxes?
-- Are there unnecessary labels?
-- Does the user immediately know where to look?
-- Does this feel alive without being distracting?
+Do NOT copy the old visual implementation literally.
+
+Improve it.
+
+The final screen should look like:
+
+"Zen Silo 2.0"
+
+rather than simply a recolored version of the old UI.
+
+==================================================
+51. FINAL QUALITY CHECK
+==================================================
+
+Before declaring the work complete, ask:
+
+Does the lotus feel alive?
+
+Is protection the first thing I understand?
+
+Can I immediately tell whether protection is active?
+
+Are the statistics readable without effort?
+
+Are apps and websites visually distinguishable?
+
+Are orange elements reserved for meaningful states/actions?
+
+Have the repeated outlined cards been eliminated?
+
+Does the screen feel calm rather than cluttered?
+
+Do animations communicate actual events?
+
+Does the screen feel premium?
+
+Does anything look like a default Android component?
+
+Does the interface still work if animations are disabled?
+
+Does everything use real application data?
+
+Does the screen remain usable on smaller devices?
+
+Is the result visually consistent with the rest of the application?
 
 If the answer to any of these is no, refine the implementation.
 
 ==================================================
-41. IMPORTANT: DO NOT DO THESE THINGS
+52. FINAL REPORT
 ==================================================
 
-Do NOT:
+After implementation, provide:
 
-- replace the existing app architecture unnecessarily
-- rewrite unrelated screens
-- create fake backend logic
-- hard-code task data
-- remove existing task functionality
-- remove existing reminder functionality
-- remove statistics
-- introduce unnecessary dependencies
-- use huge amounts of blur
-- use excessive gradients
-- use excessive animations
-- create a generic Material 3 dashboard
-- create dozens of independent cards
-- make the UI look like a crypto/AI/gaming dashboard
-- use bright orange everywhere
-- sacrifice accessibility
-- sacrifice performance
-- use absolute positioning for the entire screen
-- create one enormous composable/view containing everything
+1. Files changed
+2. New components created
+3. Existing components modified
+4. Animation systems added
+5. Interaction changes
+6. Data/backend logic touched
+7. Dependencies added, if any
+8. Testing performed
+9. Any known issues
+10. Any design decisions that were necessary because of limitations in the existing codebase
 
-==================================================
-42. DELIVERABLE
-==================================================
+Most importantly:
 
-Implement the redesign directly in the existing project.
+IMPLEMENT THE SCREEN.
 
-At the end, report:
+Do not merely give me instructions.
+Do not give me pseudo-code.
+Do not stop at a design proposal.
 
-1. Files changed.
-2. Components created.
-3. Components modified.
-4. Animations added.
-5. Any backend/data logic touched.
-6. Any new dependencies added.
-7. Any issues that could not be completed.
-8. Build/test result.
-
-Do not just tell me what you would implement.
-
-Actually implement it.
+Make the changes in the actual project.
