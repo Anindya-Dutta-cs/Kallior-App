@@ -1,826 +1,1369 @@
-You are redesigning an existing Android application's "Zen Silo" screen.
+You are redesigning and expanding an existing Android application's "AriaAlarm" screen.
 
-The CURRENT screen should be treated as the starting point and visual reference for understanding the current functionality.
+Your task is to redesign the screen from TOP TO BOTTOM and implement the redesign directly in the existing Android project.
 
-Your job is to redesign and IMPLEMENT this screen from top to bottom.
+This is NOT a request for a static mockup.
 
-Do not merely describe a design.
-Do not create a static mockup.
-Do not replace the screen with hard-coded fake data.
+You must:
 
-Inspect the existing project first, understand how this screen currently works, and then implement the redesign directly in the existing application.
+1. Inspect the existing codebase.
+2. Understand the current AriaAlarm architecture and functionality.
+3. Preserve working functionality.
+4. Redesign the UI.
+5. Add support for multiple alarms.
+6. Add per-alarm custom songs.
+7. Add per-alarm names.
+8. Add enable/disable state per alarm.
+9. Add the necessary persistence/data logic.
+10. Add polished interactions and animations.
+11. Build and test the result.
 
-The result should feel like a polished production application with a strong visual identity, excellent UX, deliberate motion, and clear information hierarchy.
-
-==================================================
-1. CORE PRODUCT CONCEPT
-==================================================
-
-This screen represents "Zen Silo"/"Focus Fortress", a digital protection/distraction-control system.
-
-The screen communicates:
-
-- protection is active
-- distracting apps are restricted
-- distracting websites are restricted
-- screen-time impact
-- time/value lost or potentially recovered
-- which apps are responsible for distraction
-- the user's current protection state
-
-The lotus is the primary visual identity of Zen Silo.
-
-The lotus should NOT remain a static image.
-
-It should become an interactive animated representation of the protection system.
-
-The redesign must preserve this concept.
+The final screen should feel like a real, polished product rather than a settings screen.
 
 ==================================================
-2. FIRST: INSPECT THE EXISTING PROJECT
+1. PRODUCT CONCEPT
 ==================================================
 
-Before modifying anything, inspect the entire relevant implementation.
+AriaAlarm is the user's personalized morning alarm system.
 
-Determine:
+The core experience should communicate:
 
-- Android framework
-- Jetpack Compose or XML Views
-- navigation architecture
-- state management
-- database/backend
-- repositories
-- services
-- screen-time tracking implementation
-- app-blocking implementation
-- website-blocking implementation
-- protection-state implementation
-- current Zen Silo screen
-- existing theme
-- existing icons
-- existing animation utilities
-- existing data models
-- existing navigation destinations
+"My morning starts with something I chose."
 
-Locate the actual implementation of:
+The user should be able to:
 
-- protection status
-- time sink
-- total screen time
-- limited apps
-- limited websites
-- blocked app statistics
-- potential earnings/value calculation
-- app usage breakdown
-- website restriction state
+- upload/import songs
+- maintain a library of songs
+- create multiple alarms
+- give every alarm a custom name
+- assign a different song to each alarm
+- set the time
+- enable/disable each alarm
+- edit existing alarms
+- delete alarms
+- preview a song
+- understand which alarm will ring next
 
-Do not duplicate existing business logic.
+The UI should make the experience feel personal and premium.
 
-Do not create a second source of truth.
+The application already has a strong dark visual identity.
 
-Do not hard-code values that already exist in the application.
-
-Reuse the existing architecture wherever possible.
-
-Before editing, identify the files responsible for:
-
-1. Zen Silo UI
-2. Protection state
-3. Screen-time data
-4. Blocked-app data
-5. Blocked-website data
-6. Value/earnings calculations
-7. Navigation
-8. Theme/design system
+Continue that identity.
 
 ==================================================
-3. HIGH-LEVEL DESIGN GOAL
+2. DESIGN DIRECTION
 ==================================================
 
-Redesign the screen so it feels:
+Redesign AriaAlarm so it feels:
 
 - sleek
 - modern
-- calm
+- elegant
 - premium
-- intentional
 - minimal
-- sophisticated
+- atmospheric
+- calm
 - slightly futuristic
+- personal
 - alive
 
-The visual language should feel appropriate for a digital-wellbeing/productivity application.
+It should NOT look like:
 
-It should NOT feel like:
+- a generic Android alarm clock
+- a settings page
+- a collection of Material cards
+- an audio player
+- a generic productivity dashboard
 
-- a gaming dashboard
-- a cyberpunk interface
-- a generic Material dashboard
-- a finance app
-- a settings screen
-- a collection of unrelated cards
+The design should feel consistent with the rest of my application.
 
-The emotional tone should be:
+The visual identity should continue using:
 
-"Your digital environment is under control."
+- near-black backgrounds
+- warm orange as the primary accent
+- elegant typography
+- subtle gradients
+- restrained borders
+- soft shadows
+- rounded surfaces
+- intentional spacing
+- minimal iconography
 
-The interface should communicate calm control rather than stress.
+Orange should NOT be used for every icon and control.
 
-==================================================
-4. PRIMARY UX PRINCIPLE
-==================================================
+Use it primarily for:
 
-The user should understand the screen in approximately 2–3 seconds.
+- active states
+- primary actions
+- important status
+- selected elements
+- confirmation
+- key visual emphasis
 
-They should immediately understand:
-
-1. Is protection active?
-2. What is protection doing?
-3. How much screen time/distraction is being prevented?
-4. What apps/websites are restricted?
-5. What is the impact?
-
-The order of visual importance should roughly be:
-
-PROTECTION STATUS
-↓
-LIVE LOTUS VISUALIZATION
-↓
-TODAY'S IMPACT
-↓
-RESTRICTIONS
-↓
-DETAILED USAGE
-
-Do not allow secondary statistics to compete visually with the protection state.
+Use neutral tones for secondary information and controls.
 
 ==================================================
-5. SCREEN STRUCTURE
+3. CURRENT PROBLEMS TO SOLVE
 ==================================================
 
-Redesign the screen approximately in this order:
+The current screen has these problems:
+
+1. Too much unused vertical space.
+2. The screen feels visually empty.
+3. There is only one large alarm container.
+4. The interface feels like a settings screen.
+5. The Time and Enabled controls look like generic settings rows.
+6. The song is separated from the alarm concept.
+7. The plus button does not communicate "create a new alarm" strongly enough.
+8. The alarm lacks a visual identity.
+9. There is no clear hierarchy around the NEXT alarm.
+10. The interface does not feel alive.
+11. The same orange color is repeatedly applied to icons, switches, and actions.
+12. There is no elegant way to manage multiple alarms.
+13. The user cannot associate a name with an alarm.
+14. The user cannot clearly understand which song belongs to which alarm.
+15. The song area does not feel like a music library.
+
+Solve all of these.
+
+==================================================
+4. HIGH-LEVEL INFORMATION ARCHITECTURE
+==================================================
+
+The redesigned screen should have approximately this structure:
 
 HEADER
+    AriaAlarm
+    supporting text / subtle status
 
-Zen Silo
-optional settings/action button
+NEXT ALARM HERO
+    next alarm name
+    time
+    day/repeat information
+    assigned song
+    animated visual treatment
+    quick enable/disable control
 
-PROTECTION HERO
+ALARMS
+    section header
+    Add Alarm
+    list of alarm cards
 
-Animated lotus
-Protection status
-Active/inactive state
-Optional supporting information
-
-IMPACT SUMMARY
-
-Time saved/recovered
-Total screen time
-Potential value/impact
-
-RESTRICTIONS
-
-Limited apps
-Limited websites
-
-DISTRACTION DETAILS
-
-Apps that account for the most time
-Detailed usage/value breakdown
+MUSIC
+    section header
+    song library / uploaded songs
+    Add Song
 
 BOTTOM NAVIGATION
 
-The exact layout may change based on the existing application's navigation system.
+The exact structure can adapt to the existing application's navigation architecture.
+
+The important thing is:
+
+The next upcoming alarm should have the highest information priority.
 
 ==================================================
-6. HEADER
+5. HEADER
 ==================================================
+
+Current:
+
+AriaAlarm
+
+Upload your .mp3 files and start
+your morning with a bang
+
+Improve this.
 
 Keep:
 
-"Zen Silo"
+AriaAlarm
 
-as the page identity.
+as the primary page title.
 
-However, improve its typography and spacing.
+The subtitle should become shorter, more polished, and more useful.
 
-The title should feel premium and intentional.
+Possible conceptual direction:
 
-Use a strong typographic hierarchy.
-
-Consider:
-
-Zen Silo
-
-with a subtle secondary descriptor only if the existing product requires one.
-
-Do not clutter the header.
-
-If the existing screen has a settings/control button, integrate it into the header rather than placing a floating generic icon somewhere arbitrary.
-
-==================================================
-7. PROTECTION HERO — MOST IMPORTANT COMPONENT
-==================================================
-
-The lotus is the visual centerpiece.
-
-The current application has a static lotus image with ripples around it.
-
-Replace the static presentation with an animated status visualization.
-
-The lotus should visually communicate the current protection state.
-
-==================================================
-8. LOTUS VISUAL DESIGN
-==================================================
-
-Preserve the recognizable lotus identity from the existing design.
-
-Do not completely replace the concept.
-
-However, make the composition more sophisticated.
-
-The lotus can contain:
-
-- central lotus artwork
-- soft circular halo
-- multiple concentric rings
-- subtle breathing glow
-- low-opacity particles/light
-- status-dependent visual changes
-
-Avoid excessive decoration.
-
-It should feel like a living system rather than a GIF.
-
-==================================================
-9. ACTIVE STATE
-==================================================
-
-When protection is active:
-
-The lotus should have a subtle continuous breathing animation.
-
-Recommended behavior:
-
-- scale very slightly
-- glow intensity changes subtly
-- outer ring expands slowly
-- ring fades as it expands
-- another ring follows
-- center remains visually stable
-
-The animation must be slow and calming.
-
-Do NOT create a large pulsing effect.
-
-The user should notice movement without feeling distracted.
-
-==================================================
-10. PROTECTION RIPPLES
-==================================================
-
-The current design contains static ripples.
-
-Convert them into actual animated ripples.
-
-Possible sequence:
-
-A ring originates from the lotus.
-
-It slowly expands.
-
-Opacity decreases.
-
-It disappears.
-
-A new ring begins.
-
-Use staggered timing.
-
-However:
-
-Do not animate too many rings simultaneously.
-
-Keep the motion elegant and subtle.
-
-The animation should communicate:
-
-"Protection is continuously active."
-
-==================================================
-11. PROTECTION STATE TEXT
-==================================================
-
-Instead of placing:
-
-"Protection is active"
-
-as a passive sentence beneath the image, turn it into a clear status component.
-
-Example conceptual structure:
-
-● PROTECTED
-
-Protection is active
+Your mornings, your way.
 
 or:
 
-Protected
-Blocking distractions
+Wake up to something worth hearing.
 
-Use typography and visual treatment to establish a clear status hierarchy.
+Do not blindly copy these phrases.
 
-The status should be instantly understandable.
+Choose wording appropriate to the product.
 
-Orange can be used here because it carries semantic meaning:
+The header should not occupy excessive vertical space.
 
-ACTIVE / PROTECTED.
+Use strong typography.
 
-Do not use orange for every element on the page.
-
-==================================================
-12. INACTIVE STATE
-==================================================
-
-The animation system must support an inactive state.
-
-When protection is disabled:
-
-- lotus becomes subdued
-- glow becomes minimal
-- ripples stop
-- active orange becomes muted
-- status changes clearly
-- UI provides an obvious action to enable protection
-
-Example:
-
-Protection paused
-
-[ Enable Protection ]
-
-The inactive state must be visually distinct from the active state.
-
-Do not rely exclusively on color.
+Maintain the elegant visual personality already established in the app.
 
 ==================================================
-13. EVENT-DRIVEN LOTUS ANIMATION
+6. NEXT ALARM HERO
 ==================================================
 
-Make the lotus respond to actual protection events.
+This is the most important addition.
 
-When an app is blocked:
+Instead of immediately showing a large generic "Alarm" settings card, make the next upcoming enabled alarm the HERO.
 
-Trigger a brief visual reaction.
+Example conceptual layout:
 
-Example:
+NEXT ALARM
 
-- pulse
-- short brighter glow
-- one expanding ripple
-- subtle scale change
+06:25
 
-When a website is blocked:
+Morning Run
 
-Use a similar but slightly different event reaction.
+Song 1
 
-When protection begins:
+Tomorrow · Every weekday
 
-Use a stronger activation animation.
+[ enabled control ]
 
-When protection stops:
+The exact information depends on what the existing data model supports.
 
-Use a graceful fade-out/deactivation animation.
+The time should be large.
 
-These animations should communicate actual state changes.
+The alarm name should be clearly visible.
 
-Do not animate randomly.
+The song should be immediately associated with the alarm.
 
-==================================================
-14. IMPACT METRICS
-==================================================
-
-The current screen has:
-
-Time Sink
-Total Screen Time
-
-Improve the presentation dramatically.
-
-These numbers should become visually readable metrics.
-
-Instead of tiny labels and dashes, use:
-
-TIME RECOVERED
-1h 42m
-
-SCREEN TIME
-3h 18m
-
-Use the application's actual data.
-
-Do not invent statistics.
-
-Use a hierarchy where the numbers are significantly more prominent than their labels.
+The next alarm should visually feel more important than other alarms.
 
 ==================================================
-15. NUMBER ANIMATIONS
+7. NEXT ALARM VISUALIZATION
 ==================================================
 
-When metrics update:
+Create a subtle animated visual treatment around the next alarm.
 
-Do not instantly replace the values.
+This does not need to be a traditional clock.
 
-Animate numeric transitions.
+Possible visual language:
 
-Example:
+- soft orange ambient glow
+- subtle circular rings
+- waveform-inspired lines
+- slow breathing gradient
+- extremely subtle particles
+- animated arc indicating time/proximity to the alarm
 
-1h 35m
-→
-1h 42m
+The animation should be restrained.
 
-The numbers should smoothly interpolate where appropriate.
+It should create the feeling that the alarm is "waiting."
 
-Keep the animation short.
-
-The user should perceive it as responsive feedback.
-
-==================================================
-16. DAY-TO-DAY CONTEXT
-==================================================
-
-Where existing data supports it, display a subtle comparison.
-
-Examples:
-
-↓ 18% from yesterday
-
-or:
-
-12m less than yesterday
-
-Only show comparisons when the underlying data genuinely supports them.
-
-Never create fake trends.
-
-This information should remain secondary.
+Do NOT make it look like a gaming dashboard.
 
 ==================================================
-17. RESTRICTION SECTION
+8. NEXT ALARM COUNTDOWN
 ==================================================
 
-Create a section for:
-
-Limited Apps
-Limited Websites
-
-However, do NOT make them two generic identical cards.
-
-They should have strong semantic identity.
+Where useful, show a countdown.
 
 For example:
 
-LIMITED APPS
-12 blocked
+06:25
 
-LIMITED WEBSITES
-8 blocked
-
-Use different icons that immediately communicate their purpose.
-
-Examples:
-
-Apps:
-app/grid/app-lock style icon
-
-Websites:
-globe/browser style icon
-
-The icons should not all have identical visual weight.
-
-==================================================
-18. ICON COLOR SYSTEM
-==================================================
-
-This is a major problem in the existing screen.
-
-Currently many icons and buttons use the same orange.
-
-Do not do that.
-
-Create a restrained semantic hierarchy.
-
-Suggested system:
-
-Orange:
-primary action
-active protection
-important positive status
-
-Neutral/light:
-secondary information
-normal navigation
-supporting controls
-
-Muted gray:
-inactive states
-metadata
-secondary labels
-
-Optional restrained secondary accent:
-categorization only, if necessary
-
-Do NOT use multiple bright accent colors everywhere.
-
-The interface should remain visually calm.
-
-==================================================
-19. BUTTON DESIGN
-==================================================
-
-The current orange circular buttons feel repetitive.
-
-Replace them with more intentional controls.
-
-Primary controls should use the application's main accent.
-
-Secondary controls should be neutral or tonal.
-
-Examples:
-
-Primary:
-Enable protection
-
-Secondary:
-Manage apps
-
-Secondary:
-Manage websites
-
-Do not make every card contain a bright orange circular button.
-
-==================================================
-20. "APPS THAT WASTE YOUR TIME"
-==================================================
-
-This is useful information but currently looks like another generic card.
-
-Redesign it as a meaningful summary.
-
-Possible structure:
-
-Apps taking your time
-
-Instagram                  42m
-YouTube                    31m
-TikTok                     24m
+in 8h 43m
 
 or:
 
-Top distractions
+Tomorrow · 8h 43m
 
-Instagram       42m
-YouTube         31m
-TikTok          24m
+Only implement a countdown if the existing product requirements and data model support it properly.
 
-Only use real data from the application.
+The countdown should update efficiently.
 
-The user should be able to immediately identify where their attention is going.
+Avoid continuously recomputing the entire screen.
 
 ==================================================
-21. TOP DISTRACTION VISUALIZATION
+9. NEXT ALARM ANIMATION
 ==================================================
 
-Consider using:
+The hero should have a subtle ambient animation while an alarm is enabled.
 
-- short horizontal usage bars
-- subtle progress indicators
-- compact rows
-- app icons
-- time labels
+For example:
 
-Avoid turning this into a complicated chart.
+- glow slowly expands and contracts
+- circular ring slowly rotates or moves
+- waveform subtly responds to the current song
+- time remains stable
 
-A simple ranked list should be enough.
+The user's attention should be drawn to the alarm without creating visual noise.
+
+When the alarm becomes disabled:
+
+- glow fades
+- ambient animation slows/stops
+- status becomes visually subdued
+
+==================================================
+10. ALARM MODEL
+==================================================
+
+The application currently appears to have a single alarm.
+
+Change the architecture so that alarms become independent entities.
+
+Each alarm should conceptually contain:
+
+Alarm
+- id
+- name
+- hour
+- minute
+- enabled
+- songId / song reference
+- repeat configuration, if supported
+- createdAt / updatedAt where appropriate
+
+Use names appropriate to the existing codebase.
+
+Do not duplicate models if an alarm model already exists.
+
+Modify the existing model rather than creating an unnecessary second model.
+
+==================================================
+11. MULTIPLE ALARMS
+==================================================
+
+The user must be able to create multiple alarms.
+
+The UI should display alarms in a clean list.
 
 Example:
 
-Instagram
-██████████
-42m
+ALARMS                                  +
 
-YouTube
-███████
-31m
+┌──────────────────────────────┐
+│ 06:25     Morning Run        │
+│           Song1              │
+│           Weekdays            │
+│                         ON    │
+└──────────────────────────────┘
 
-TikTok
-██████
-24m
+┌──────────────────────────────┐
+│ 07:30     University         │
+│           Song2               │
+│           Mon–Fri             │
+│                         ON    │
+└──────────────────────────────┘
 
-The bars should use restrained visual treatment.
+Do not create enormous cards.
 
-Orange should indicate important/highest-impact data, not every bar.
-
-==================================================
-22. APP ICONS
-==================================================
-
-Use real app icons if the application already obtains them.
-
-Do not use generic placeholder symbols when real app information is available.
-
-App icons should be small and consistent.
-
-Avoid making app icons visually louder than the usage statistics.
+Multiple alarms must remain easy to scan.
 
 ==================================================
-23. VALUE / EARNINGS SECTION
+12. ALARM CARD DESIGN
 ==================================================
 
-The current:
+Each alarm card should have:
 
-"You could've earned"
+- time
+- alarm name
+- assigned song
+- repeat schedule if supported
+- enabled/disabled state
+- edit affordance
+- deletion affordance
+- optional next-occurrence information
 
-section feels visually disconnected.
+The time is the primary visual element.
 
-Redesign it into an impact section.
+The name is the secondary visual element.
 
-Possible concept:
+The song and repeat schedule are tertiary information.
 
-TIME / VALUE AT RISK
+Do not make every property look equally important.
 
-$12.40
+==================================================
+13. ALARM CARD VARIATION
+==================================================
 
-Estimated value associated with your distraction time.
+The next upcoming alarm can have a slightly elevated visual treatment.
 
-Then optionally show contributing apps below.
+For example:
+
+- brighter surface
+- subtle orange glow
+- stronger typography
+- small "NEXT" label
+
+Other alarms can remain visually quieter.
+
+This creates a natural hierarchy.
+
+Avoid giving every alarm the same visual weight.
+
+==================================================
+14. ENABLE/DISABLE
+==================================================
+
+Every alarm needs its own enabled state.
+
+Do not use a single global Enabled switch.
+
+The enabled state should belong to the individual alarm.
+
+The control can be:
+
+- compact switch
+- custom toggle
+- accessible button
+
+Choose whatever best fits the design system.
+
+When enabled:
+
+- subtle orange accent
+- clear active state
+
+When disabled:
+
+- neutral/dimmed state
+
+Do not make disabled alarms disappear.
+
+They should remain visible and editable.
+
+==================================================
+15. ENABLE/DISABLE ANIMATION
+==================================================
+
+When the user toggles an alarm:
+
+Enabled → Disabled
+
+Animate:
+
+- switch movement
+- accent fade
+- subtle card tone change
+- hero state if this is the next alarm
+
+Disabled → Enabled
+
+Animate:
+
+- switch movement
+- accent appearing
+- subtle highlight
+- update "next alarm" if applicable
+
+Do not animate the entire screen.
+
+==================================================
+16. CREATE NEW ALARM
+==================================================
+
+Add a clear:
+
++
+
+Add Alarm
+
+action.
+
+The plus button should feel intentional.
+
+Avoid placing a random floating orange circle in empty space.
+
+It should belong naturally to the section/header.
+
+Possible design:
+
+ALARMS                        +
+
+or:
+
+ALARMS
+                        [ + ]
+
+Make the interaction obvious.
+
+==================================================
+17. ADD ALARM FLOW
+==================================================
+
+Tapping Add Alarm should open an elegant creation interface.
+
+Prefer a dedicated screen or polished bottom sheet depending on the existing architecture.
+
+Do NOT use a primitive default dialog containing every setting at once.
+
+The creation flow should emphasize:
+
+1. Alarm name
+2. Time
+3. Song
+4. Repeat
+5. Enabled
+
+The order should follow the user's mental model.
+
+==================================================
+18. ALARM NAME
+==================================================
+
+Every alarm can have a custom name.
 
 Example:
 
-Instagram       42m      $4.20
-YouTube         31m      $3.10
-TikTok          24m      $2.40
+Morning Run
+University
+Gym
+Wake Up
+Weekend
+Study
+Early Flight
 
-Use the application's actual calculation.
+The name field should be visually prominent.
 
-Do not imply guaranteed earnings if the metric is only an estimate.
+Placeholder:
 
-The wording must accurately represent what the existing calculation means.
+Alarm name
 
-==================================================
-24. EMPTY STATES
-==================================================
+Do not force generic names such as "Alarm 1".
 
-Never show large empty cards filled with placeholder text.
+If the user leaves it blank, generate a reasonable fallback such as:
 
-If no distracting apps have been recorded:
+Alarm
 
-You are clear.
+or:
 
-No significant distractions detected.
+Morning Alarm
 
-or an equivalent concise message.
-
-If no limited apps exist:
-
-No apps are currently restricted.
-
-[ Manage apps ]
-
-If no limited websites exist:
-
-No websites are currently restricted.
-
-[ Manage websites ]
-
-The empty state should feel intentional and calm.
+depending on the app's conventions.
 
 ==================================================
-25. CARD SYSTEM
+19. TIME PICKER
 ==================================================
 
-Reduce the number of visually identical cards.
+The time picker should feel integrated with the application's design.
 
-Use three visual levels:
+Do not simply drop in a default Android component without styling consideration.
 
-LEVEL 1 — HERO
-Protection/lotus
+The selected time should be the dominant element.
 
-LEVEL 2 — IMPORTANT
-Metrics/restrictions
+Support the device's appropriate 12/24-hour preference.
 
-LEVEL 3 — DETAIL
-Usage/value breakdown
+Make the time visually large and easy to adjust.
 
-Different hierarchy should be communicated through:
+==================================================
+20. CUSTOM SONG PER ALARM
+==================================================
 
-- spacing
+THIS IS A CORE NEW FEATURE.
+
+Each alarm can have its own song.
+
+Example:
+
+Morning Run
+06:25
+Song 1
+
+University
+07:10
+Song 2
+
+Weekend
+09:00
+Song X
+
+An alarm must store a reference to its selected song.
+
+Do NOT store the audio itself inside every alarm.
+
+Use a reusable song entity/library and reference it from an alarm.
+
+==================================================
+21. SONG LIBRARY
+==================================================
+
+The existing screen has:
+
+Songs (1)
+
+and:
+
+Song 1
+
+Turn this into a real song library.
+
+The library should allow:
+
+- add/import song
+- view uploaded songs
+- preview song
+- select song for an alarm
+- delete song
+- understand which song is selected
+
+The UI should be compact.
+
+Do not allow the song library to dominate the alarm management screen.
+
+==================================================
+22. UPLOAD / IMPORT SONG
+==================================================
+
+Preserve the existing .mp3 import functionality.
+
+Add a polished:
+
+Add Song
+
+or:
+
++
+
+action.
+
+Use Android's appropriate document/file picker mechanism.
+
+The user should be able to select an MP3 from device storage.
+
+After import:
+
+1. Validate file.
+2. Persist the file safely.
+3. Extract/display useful metadata where feasible.
+4. Add it to the song library.
+5. Make it available for alarm assignment.
+
+Do not break existing imported songs.
+
+==================================================
+23. SONG PREVIEW
+==================================================
+
+Each song should have a small play/preview control.
+
+Example:
+
+▶  Song 1
+
+The control should animate when playing.
+
+Possible animation:
+
+- icon changes play → pause
+- subtle waveform movement
+- progress indicator
+
+Do not turn every song into a full media-player card.
+
+A compact preview is sufficient.
+
+==================================================
+24. SONG SELECTION FOR ALARM
+==================================================
+
+When creating or editing an alarm:
+
+Tap:
+
+Song
+
+Then open a song selection interface.
+
+Show:
+
+- song title
+- artist if available
+- play/preview
+- currently selected state
+
+Selected song should have a clear but restrained active state.
+
+For example:
+
+✓ selected
+
+or:
+
+orange indicator
+
+Do NOT rely only on color.
+
+==================================================
+25. SONGLESS ALARMS
+==================================================
+
+Handle the case where no song has been assigned.
+
+Do not break.
+
+Display:
+
+No song selected
+
+and provide:
+
+Choose a song
+
+The alarm should remain editable.
+
+The exact behavior when it rings should follow the application's product requirements.
+
+Do not invent unsupported behavior.
+
+==================================================
+26. EDIT ALARM
+==================================================
+
+Tapping an alarm should open an edit screen/sheet.
+
+Allow editing:
+
+- name
+- time
+- song
+- repeat schedule
+- enabled state
+
+Changes should save cleanly.
+
+Use explicit Save where appropriate.
+
+Avoid accidental modifications from navigating around the UI.
+
+==================================================
+27. DELETE ALARM
+==================================================
+
+Users need a way to delete an alarm.
+
+Prefer:
+
+Swipe
+
+or:
+
+Edit → Delete
+
+or both.
+
+If using swipe-to-delete:
+
+- reveal delete action progressively
+- use a clear deletion affordance
+- animate the card out
+- provide undo where appropriate
+
+Do not make deletion too easy to trigger accidentally.
+
+==================================================
+28. EMPTY STATE — NO ALARMS
+==================================================
+
+If the user has zero alarms:
+
+Do NOT show a huge empty box.
+
+Instead create an intentional empty state.
+
+Example:
+
+No alarms yet
+
+Create your first alarm
+and wake up to your own soundtrack.
+
+[ + Create Alarm ]
+
+The empty state should be visually elegant and compact.
+
+==================================================
+29. EMPTY STATE — NO SONGS
+==================================================
+
+If there are no songs:
+
+Your music library is empty.
+
+Add an MP3
+to personalize your alarms.
+
+[ Add Song ]
+
+Do not leave a giant blank region.
+
+==================================================
+30. PRIMARY INFORMATION HIERARCHY
+==================================================
+
+At a glance, the user should understand:
+
+1. What is my next alarm?
+2. What time will it ring?
+3. What song will play?
+4. Is it enabled?
+5. What other alarms do I have?
+6. What songs are available?
+
+The screen should not force the user to inspect multiple cards to answer these.
+
+==================================================
+31. REDUCE VISUAL REPETITION
+==================================================
+
+The existing screen repeats:
+
+- rounded rectangles
+- large dark boxes
+- orange circles
+- orange icons
+- outlined controls
+
+Reduce this dramatically.
+
+Use hierarchy through:
+
+- scale
 - typography
-- tonal surfaces
-- size
-- emphasis
-
-Not merely by adding borders.
-
-==================================================
-26. BORDER USAGE
-==================================================
-
-Avoid outlining every component.
-
-The current UI relies heavily on outlined rounded rectangles.
-
-Replace many borders with:
-
-- tonal contrast
-- subtle surfaces
-- shadows
-- gradients
 - spacing
-- small dividers
+- tonal surfaces
+- iconography
+- selective accent usage
 
-Borders should be used selectively.
-
-==================================================
-27. SURFACE DESIGN
-==================================================
-
-Use subtle dark surfaces against the near-black background.
-
-Do not make every surface identical.
-
-Example hierarchy:
-
-Background:
-near-black
-
-Primary surface:
-slightly lighter charcoal
-
-Secondary surface:
-slightly different charcoal
-
-Primary accent:
-orange
-
-This creates depth without requiring excessive gradients.
+Not every component needs a border.
 
 ==================================================
-28. TYPOGRAPHY
+32. ORANGE COLOR SYSTEM
+==================================================
+
+Orange should become semantic.
+
+Orange means:
+
+- active
+- selected
+- primary action
+- important state
+- confirmation
+
+Neutral tones mean:
+
+- normal content
+- secondary controls
+- inactive state
+
+Do not color every icon orange.
+
+For example:
+
+Song play icon → neutral
+
+Song selected state → orange
+
+Alarm enabled → orange
+
+Alarm disabled → muted gray
+
+Add button → orange
+
+Delete → restrained destructive treatment
+
+This will immediately make the screen clearer.
+
+==================================================
+33. ICONOGRAPHY
+==================================================
+
+Use icons intentionally.
+
+Do not use the same orange treatment for every icon.
+
+Suggested semantic icon system:
+
+Alarm:
+alarm/clock icon
+
+Song:
+music note
+
+Add:
+plus
+
+Delete:
+trash
+
+Repeat:
+repeat
+
+Enabled:
+appropriate active-state indicator
+
+Settings:
+gear
+
+Icons should be:
+
+- simple
+- consistent
+- appropriately sized
+- accessible
+- visually secondary to key information
+
+==================================================
+34. VISUALIZATION / MUSIC IDENTITY
+==================================================
+
+Consider introducing a subtle audio-inspired visual element.
+
+For example:
+
+- waveform
+- equalizer bars
+- circular audio ring
+
+This should appear near the currently selected/next alarm song.
+
+It could animate gently while previewing a song.
+
+It should NOT become a giant decorative equalizer.
+
+Its job is to connect:
+
+alarm
++
+music
+
+==================================================
+35. ALARM ACTIVATION STATE
+==================================================
+
+When an alarm is enabled and is the next upcoming alarm:
+
+The UI should communicate:
+
+READY
+
+without needing a giant label.
+
+Possible subtle indicators:
+
+- small orange status dot
+- active glow
+- "NEXT" label
+- enabled switch
+- animated accent
+
+Use multiple cues but keep them subtle.
+
+==================================================
+36. ALARM RINGING EXPERIENCE
+==================================================
+
+Inspect the existing application to determine how alarms are currently triggered.
+
+Do not replace working alarm scheduling logic unnecessarily.
+
+However, the new alarm architecture must support multiple scheduled alarms.
+
+Ensure each individual alarm can:
+
+- be scheduled
+- be cancelled
+- be rescheduled after edits
+- be disabled
+- trigger its assigned song
+
+When an alarm is edited:
+
+old schedule must be correctly cancelled/updated.
+
+When an alarm is deleted:
+
+its scheduled event must be removed.
+
+When an alarm is disabled:
+
+its scheduled event must no longer fire.
+
+When it is enabled:
+
+schedule it correctly.
+
+Do not leave stale scheduled alarms.
+
+==================================================
+37. AUDIO PLAYBACK
+==================================================
+
+Each alarm should play its assigned custom song.
+
+Use the existing audio implementation if one exists.
+
+Do not create duplicate media-player infrastructure without reason.
+
+Ensure:
+
+- selected song is resolved correctly
+- file access remains valid
+- playback handles app/device state appropriately
+- the alarm can play without the user leaving the app open, according to Android's supported mechanisms and the existing app architecture
+
+Respect Android lifecycle and audio behavior.
+
+==================================================
+38. DATA MODEL / PERSISTENCE
+==================================================
+
+The new feature requires persistent alarm data.
+
+Do not only store alarms in temporary UI state.
+
+Determine the application's current persistence approach.
+
+If the project already uses a database/backend:
+
+integrate alarms and songs through the existing architecture.
+
+If a local database is already present:
+
+reuse it.
+
+If Supabase is being used for user data:
+
+follow the existing repository/data-layer architecture.
+
+Do not put database queries directly inside the UI.
+
+==================================================
+39. BACKEND / DATABASE
+==================================================
+
+If the existing application stores user-specific data remotely, consider the necessary schema/data changes.
+
+Conceptually:
+
+songs
+- id
+- user_id
+- name
+- artist
+- file reference
+- metadata
+- created_at
+
+alarms
+- id
+- user_id
+- name
+- hour
+- minute
+- enabled
+- song_id
+- repeat configuration
+- created_at
+- updated_at
+
+Do NOT blindly implement this exact schema.
+
+First inspect the existing data model and adapt it to the application's architecture.
+
+Add migrations where required.
+
+Do not break existing users/data.
+
+==================================================
+40. FILE STORAGE
+==================================================
+
+Imported songs must be stored safely.
+
+Determine how the current project stores uploaded MP3 files.
+
+Preserve that approach if it is already sound.
+
+If the current application uses local storage:
+
+ensure the references remain valid across app restarts.
+
+If cloud storage is used:
+
+reuse the existing storage architecture.
+
+Do not duplicate audio files unnecessarily.
+
+==================================================
+41. MIGRATION
+==================================================
+
+The existing app may have one alarm rather than multiple.
+
+Create a migration strategy if required.
+
+Existing alarm data should not disappear.
+
+For example:
+
+existing alarm
+→ becomes one Alarm entity
+
+existing selected song
+→ remains available
+
+Do not require the user to rebuild their alarm manually after the update.
+
+==================================================
+42. ANIMATION PHILOSOPHY
+==================================================
+
+The screen should feel alive.
+
+However, animation must communicate state and interaction.
+
+Do not animate everything continuously.
+
+Use animation for:
+
+- opening the screen
+- selecting an alarm
+- toggling enabled state
+- adding an alarm
+- deleting an alarm
+- selecting a song
+- previewing music
+- updating the next alarm
+- countdown changes
+- playing/pausing music
+
+Ambient animations should be extremely subtle.
+
+==================================================
+43. SCREEN ENTRY ANIMATION
+==================================================
+
+When opening AriaAlarm:
+
+Header:
+fade/slide in subtly.
+
+Next alarm:
+appear slightly after header.
+
+Alarm list:
+stagger gently.
+
+Music:
+appear after alarms.
+
+Do not make the entire screen bounce into existence.
+
+Suggested total duration:
+
+approximately 500–900ms.
+
+==================================================
+44. ADD ALARM ANIMATION
+==================================================
+
+When tapping +:
+
+The interface should transition naturally into the creation flow.
+
+Possible sequence:
+
+1. Plus button responds.
+2. Creation screen/sheet expands.
+3. Fields appear sequentially or as one polished composition.
+4. Time is immediately visible.
+5. Save action is clear.
+
+The user should feel that they are "creating an alarm", not configuring a system settings page.
+
+==================================================
+45. ADD ALARM SAVE ANIMATION
+==================================================
+
+When an alarm is saved:
+
+- creation view closes smoothly
+- new alarm appears in list
+- card fades/slides into position
+- next-alarm status updates if necessary
+- assigned song becomes visible
+- enable state is immediately clear
+
+If it becomes the next alarm:
+
+animate the hero transition.
+
+==================================================
+46. SONG SELECTION ANIMATION
+==================================================
+
+When selecting a song:
+
+- selected state appears smoothly
+- play control changes state
+- selection indicator animates
+- song assignment updates
+
+Do not refresh the entire screen abruptly.
+
+==================================================
+47. PLAYBACK ANIMATION
+==================================================
+
+When previewing a song:
+
+Play button:
+play → pause
+
+Optional:
+small waveform/equalizer animates
+
+When playback stops:
+
+waveform settles.
+
+Avoid continuous expensive animations.
+
+==================================================
+48. DELETE ANIMATION
+==================================================
+
+When deleting an alarm:
+
+- card moves with gesture if swipe-to-delete
+- deletion confirmation if necessary
+- card exits smoothly
+- remaining alarms close the gap
+- hero recalculates if the deleted alarm was the next alarm
+
+If the application supports undo:
+
+show an elegant undo action.
+
+==================================================
+49. NEXT ALARM TRANSITION
+==================================================
+
+This is important.
+
+Suppose the current next alarm is:
+
+06:25 Morning Run
+
+and the user disables it.
+
+The next enabled alarm might become:
+
+07:30 University
+
+The hero should update gracefully rather than jumping immediately.
+
+Animate:
+
+old alarm
+→
+new alarm
+
+This creates the feeling of a living schedule.
+
+==================================================
+50. RESPONSIVE DESIGN
+==================================================
+
+Do not build the screen around the exact attached screenshot dimensions.
+
+Support:
+
+- small Android phones
+- tall phones
+- different aspect ratios
+- different densities
+- text scaling
+- accessibility settings
+
+Do not use large amounts of absolute positioning.
+
+Everything should adapt naturally.
+
+==================================================
+51. ACCESSIBILITY
+==================================================
+
+Ensure:
+
+- minimum touch target sizes
+- content descriptions
+- readable text
+- adequate contrast
+- accessible enable/disable controls
+- accessible song selection
+- accessible alarm editing
+- accessible delete controls
+
+Do not communicate enabled/disabled state only through orange/gray.
+
+There must be a semantic state indication.
+
+==================================================
+52. DARK MODE DESIGN
+==================================================
+
+The app currently uses a dark theme.
+
+Preserve it.
+
+Do not use pure black for every surface.
+
+Use subtle differences:
+
+background
+→
+surface
+→
+elevated surface
+
+This creates depth.
+
+Avoid making every component look like a separate floating card.
+
+==================================================
+53. TYPOGRAPHY
 ==================================================
 
 Use typography to communicate hierarchy.
 
-Suggested hierarchy:
-
 Page title:
 strong
 
-Protection status:
+Next alarm time:
+very prominent
+
+Alarm name:
 medium/strong
 
-Hero status:
-large
-
-Metrics:
-large numeric values
-
-Section headings:
-medium
+Song:
+secondary
 
 Metadata:
 small
 
-Supporting descriptions:
-small/low contrast
+Section headings:
+medium/semibold
 
-Do not use excessive font weights.
+Buttons:
+clear and concise
 
-Do not make every label uppercase.
+Do not use too many font weights.
 
-Uppercase can be used selectively for tiny category labels.
+Maintain the elegant visual personality already present in the app.
 
 ==================================================
-29. SPACING
+54. SPACING SYSTEM
 ==================================================
 
-Introduce much more intentional spacing.
-
-Major sections should be clearly separated.
-
-Avoid the sensation of:
-
-card
-card
-card
-card
-
-Instead the screen should feel like a continuous visual narrative.
-
-Use a consistent spacing system.
-
-Suggested spacing scale:
+Use a consistent spacing system such as:
 
 4dp
 8dp
@@ -830,561 +1373,848 @@ Suggested spacing scale:
 24dp
 32dp
 
-Use larger spacing between sections.
+Major sections should have clear breathing room.
 
-Use smaller spacing inside components.
+But eliminate the huge unused spaces visible in the current screen.
 
-==================================================
-30. LOTUS ANIMATION PERFORMANCE
-==================================================
+The goal is:
 
-The lotus animation must be efficient.
+SPACIOUS
 
-Do not continuously redraw expensive elements unnecessarily.
+not:
 
-Prefer efficient Android animation APIs and the project's current framework.
-
-Avoid:
-
-- excessive blur
-- giant bitmap effects
-- unnecessary particle systems
-- expensive continuous canvas operations
-
-The animation should remain smooth on mid-range Android devices.
+EMPTY.
 
 ==================================================
-31. SCROLL BEHAVIOR
+55. CARD SYSTEM
 ==================================================
 
-The full content area should scroll naturally.
+Use fewer large containers.
 
-The top hero should remain visually important.
+Prefer:
 
-Do not make the entire screen feel like a giant scrolling list of cards.
+- compact alarm rows
+- one hero treatment
+- compact music rows
+- subtle surfaces
 
-Consider subtle motion while scrolling, but keep it restrained.
-
-Do not use dramatic parallax.
-
-==================================================
-32. INTERACTION WITH PROTECTION STATUS
-==================================================
-
-The protection hero should be interactive.
-
-Possible behavior:
-
-Tap protection hero
-→ open protection controls/details.
-
-Do not hide important controls inside animation.
-
-The active state must still be understandable for users who do not interact.
+Do not put everything inside giant rounded rectangles.
 
 ==================================================
-33. LIMITED APPS INTERACTION
+56. BOTTOM NAVIGATION
 ==================================================
 
-Tapping:
+The existing bottom navigation should remain unless the current architecture strongly suggests otherwise.
 
-Limited Apps
+Preserve navigation destinations.
 
-should open the existing app restriction management screen.
+Redesign it to match the new visual language.
 
-The transition should feel intentional.
+AriaAlarm should have a clearly recognizable selected state.
 
-The card should provide tactile feedback.
-
-When pressed:
-
-- slight scale or tonal change
-- subtle ripple
-- immediate navigation
-
-Do not create a new management screen unless the project does not already have one.
+Avoid making the navigation excessively tall.
 
 ==================================================
-34. LIMITED WEBSITES INTERACTION
+57. INFORMATION DENSITY
 ==================================================
 
-Tapping:
+The current screen is too empty.
 
-Limited Websites
+Increase useful information density without creating clutter.
 
-should open the existing website restriction management screen.
-
-Use the same interaction principles as Limited Apps.
-
-However, visually distinguish the concept through iconography/content rather than making the entire component a different bright color.
-
-==================================================
-35. APP BLOCK EVENT
-==================================================
-
-When an application is blocked:
-
-The Zen Silo screen should be capable of reflecting the event.
+The user should be able to see multiple alarms at once.
 
 For example:
 
-- blocked counter increments
-- time/value metrics update
-- lotus briefly reacts
-- usage list updates
-- values animate
+ALARMS
 
-Do not reload the entire screen abruptly.
+06:25
+Morning Run
+Song 1
+Weekdays                         ON
 
-Updates should feel continuous.
+07:30
+University
+Song 2
+Mon–Fri                          ON
 
-==================================================
-36. PROTECTION TOGGLE
-==================================================
+09:00
+Weekend
+Song 3
+Sat–Sun                          OFF
 
-If the existing application allows protection to be enabled/disabled:
-
-The interaction should feel important.
-
-When enabling:
-
-1. User initiates action.
-2. UI confirms intent if required.
-3. Lotus activation animation begins.
-4. Protection state changes.
-5. Supporting UI updates.
-6. Control returns to stable active state.
-
-When disabling:
-
-1. Lotus animation winds down.
-2. State changes.
-3. UI clearly communicates inactive mode.
-
-Preserve all existing backend/service behavior.
+This gives the screen substance without making it crowded.
 
 ==================================================
-37. MICRO-INTERACTIONS
+58. SECTION STRUCTURE
 ==================================================
 
-Add purposeful animation to:
+Use clear section headings:
 
-- protection activation
-- protection deactivation
-- lotus idle state
-- blocking events
-- number changes
-- restriction card presses
-- list updates
-- navigation
-- buttons
-- expandable detail sections
+Next alarm
 
-Animations should feel:
+Alarms
 
-- fast
-- elegant
-- smooth
-- intentional
+Music
 
-Avoid:
+Avoid too many headings.
 
-- bouncing everything
-- constant pulsing
-- flashy gradients
-- excessive spring animations
-- animation for decoration alone
+Each section should have a purpose.
 
-Every animation should communicate something.
+Possible:
+
+Alarms                         +
+
+Music                          +
+
+Use "See all" only when the section genuinely leads to a larger screen.
 
 ==================================================
-38. MOTION LANGUAGE
+59. MUSIC LIBRARY DESIGN
 ==================================================
 
-Define a coherent motion system.
+Do not make the song library look like a giant file-management interface.
+
+Use compact rows.
+
+Example:
+
+♫  Song 1
+   Aaron Smith
+                         ▶
+
+or:
+
+♫  Song 1                    ▶
+    Aaron Smith
+
+Keep song information easy to scan.
+
+==================================================
+60. ALARM CREATION UX
+==================================================
+
+The user should be able to create an alarm quickly.
+
+The happy path should be:
+
+Tap +
+→ choose/set time
+→ name alarm
+→ choose song
+→ choose repeat
+→ save
+
+Avoid forcing the user through unnecessary steps.
+
+Defaults should be sensible.
+
+For example:
+
+Enabled:
+ON
+
+Song:
+most recently used / no song depending on current product logic
+
+Name:
+Alarm
+
+Repeat:
+one-time or existing default
+
+Do not invent behavior that conflicts with the existing application.
+
+==================================================
+61. VALIDATION
+==================================================
+
+Validate:
+
+- valid time
+- valid alarm name length
+- song existence
+- scheduling state
+- repeat configuration
+
+Show errors close to the affected control.
+
+Do not use generic error dialogs when an inline message would work.
+
+==================================================
+62. ERROR HANDLING
+==================================================
+
+Handle:
+
+- song import failure
+- inaccessible song file
+- deleted song assigned to alarm
+- scheduling failure
+- persistence failure
+- missing data
+- duplicate operations
+
+Errors should be understandable to normal users.
+
+Do not expose technical stack traces or database errors in the UI.
+
+==================================================
+63. PERFORMANCE
+==================================================
+
+Be careful with:
+
+- audio previews
+- repeated list recompositions
+- continuous animations
+- waveform rendering
+- countdown timers
+- database observers
+
+Avoid unnecessary work.
+
+Animations must remain smooth on mid-range devices.
+
+Audio playback should not leak resources.
+
+Cancel observers and coroutines appropriately.
+
+==================================================
+64. STATE MANAGEMENT
+==================================================
+
+Do not duplicate state.
+
+The source of truth should be the existing repository/data architecture.
+
+For example:
+
+alarm edited
+→ repository updates
+→ UI observes new alarm
+→ scheduler updates
+→ next alarm recalculates
+→ hero updates.
+
+Do not manually change five unrelated pieces of local state.
+
+==================================================
+65. SCHEDULING ARCHITECTURE
+==================================================
+
+Inspect the existing alarm scheduling implementation.
+
+Modify it so multiple independent alarms can exist.
+
+Each alarm should be independently schedulable.
+
+Required behaviors:
+
+CREATE:
+schedule alarm.
+
+ENABLE:
+schedule alarm.
+
+DISABLE:
+cancel that alarm's schedule.
+
+EDIT:
+cancel old schedule and schedule updated configuration.
+
+DELETE:
+cancel schedule and remove alarm.
+
+REBOOT / APP RESTART:
+ensure enabled alarms are restored appropriately according to the existing architecture and Android's supported scheduling mechanisms.
+
+Do not create duplicate alarm events.
+
+==================================================
+66. SONG-ALARM RELATIONSHIP
+==================================================
+
+An alarm references a song.
+
+Do not duplicate song metadata inside every alarm.
+
+If the song is deleted:
+
+Handle alarms referencing it gracefully.
+
+Possible behavior:
+
+Alarm remains
++
+Song becomes:
+No song selected
+
+OR use the existing product's preferred behavior.
+
+Choose a consistent strategy.
+
+==================================================
+67. SECURITY / DATA ISOLATION
+==================================================
+
+If the app supports accounts:
+
+Ensure alarms and songs belong to the correct user.
+
+Do not allow one user's data to appear in another user's data.
+
+Reuse the existing authentication and data-access architecture.
+
+==================================================
+68. DO NOT BREAK EXISTING FEATURES
+==================================================
+
+Preserve:
+
+- existing MP3 upload capability
+- existing navigation
+- existing audio functionality
+- existing alarm behavior
+- existing theme
+- existing settings
+- existing backend integration
+
+The redesign must be an evolution of the existing application.
+
+==================================================
+69. DO NOT ADD UNNECESSARY DEPENDENCIES
+==================================================
+
+Before adding any dependency:
+
+Check whether the functionality can be implemented using:
+
+- existing project dependencies
+- Android SDK
+- current architecture
+- existing utility classes
+
+Only introduce a dependency when there is a clear technical benefit.
+
+==================================================
+70. DESIGN SYSTEM
+==================================================
+
+Create/reuse centralized design tokens for:
+
+- colors
+- typography
+- spacing
+- corner radius
+- elevation
+- animation durations
+
+Do not scatter arbitrary values throughout the UI.
+
+This screen should be maintainable.
+
+==================================================
+71. COMPONENT ARCHITECTURE
+==================================================
+
+Use modular components.
+
+Conceptually:
+
+AriaAlarmScreen
+├── AriaAlarmHeader
+├── NextAlarmHero
+│   ├── AlarmTime
+│   ├── AlarmName
+│   ├── AlarmSong
+│   └── AmbientAlarmVisualization
+├── AlarmSection
+│   ├── SectionHeader
+│   └── AlarmList
+│       └── AlarmCard
+├── MusicSection
+│   ├── SectionHeader
+│   └── SongList
+│       └── SongItem
+└── BottomNavigation
+
+Creation/editing:
+
+AlarmEditor
+├── AlarmNameField
+├── TimeSelector
+├── SongSelector
+├── RepeatSelector
+└── EnableToggle
+
+Song management:
+
+SongLibrary
+SongItem
+SongPreview
+
+Use names appropriate to the project's architecture.
+
+Do not create a giant all-in-one screen file.
+
+==================================================
+72. MODULARITY
+==================================================
+
+The alarm editor should be reusable for:
+
+Create Alarm
+Edit Alarm
+
+Do not duplicate the entire UI.
+
+Likewise:
+
+Song selector
+should be reusable for:
+- assigning a song
+- browsing songs
+
+==================================================
+73. EMPTY / LOADING / ERROR STATES
+==================================================
+
+Implement all important states.
+
+ALARM LIST:
+loading
+populated
+empty
+error
+
+SONG LIST:
+loading
+populated
+empty
+error
+
+NEXT ALARM:
+enabled
+none scheduled
+
+Do not leave blank white/black space when data is unavailable.
+
+==================================================
+74. VISUAL FEEDBACK
+==================================================
+
+Every meaningful action should have immediate feedback.
+
+Create alarm:
+→ new item appears
+
+Delete alarm:
+→ item exits
+
+Enable:
+→ active visual state
+
+Disable:
+→ subdued state
+
+Select song:
+→ selected state
+
+Play:
+→ playback feedback
+
+Save:
+→ confirmation through UI transition
+
+Navigation:
+→ clear destination change
+
+==================================================
+75. USE MOTION TO EXPLAIN THE UI
+==================================================
+
+Animations should explain relationships.
 
 Examples:
 
-Small interaction:
-100–180ms
+Adding an alarm:
+plus → new alarm
 
-Normal component transition:
-200–300ms
+Selecting a song:
+song row → assigned song field
 
-Hero animation:
-500–1000ms
+Disabling next alarm:
+active hero → next alarm replacement
 
-Ambient lotus animation:
-slow and continuous
+Deleting:
+alarm row → removed
 
-Use appropriate easing.
-
-Avoid arbitrary animation durations.
-
-Animations should feel like they belong to the same application.
+Do not animate random elements independently.
 
 ==================================================
-39. ACCESSIBILITY
+76. PREMIUM DETAILS
+==================================================
+
+Add polish through:
+
+- subtle gradients
+- small accent glows
+- elegant dividers
+- careful typography
+- small status indicators
+- smooth easing
+- consistent icon alignment
+- carefully chosen spacing
+
+Avoid overdesign.
+
+The interface should look premium because of craftsmanship, not because of visual effects.
+
+==================================================
+77. REFERENCE IMAGE
+==================================================
+
+The attached screenshot is the reference for the CURRENT implementation.
+
+Use it to understand:
+
+- existing layout
+- existing content
+- current typography personality
+- current color identity
+- current navigation
+- current song functionality
+- current alarm functionality
+
+Do not simply redesign it by moving the same boxes around.
+
+The objective is:
+
+AriaAlarm 2.0
+
+not:
+
+AriaAlarm with prettier colors.
+
+==================================================
+78. BEFORE CODING
+==================================================
+
+First inspect:
+
+- current AriaAlarm screen
+- alarm model
+- song model
+- persistence
+- MP3 import code
+- audio playback code
+- scheduling code
+- backend
+- navigation
+- theme
+- bottom navigation
+
+Then determine the minimum set of files that must change.
+
+Do not immediately start rewriting files.
+
+==================================================
+79. IMPLEMENTATION PHASES
+==================================================
+
+PHASE 1
+Inspect architecture and current implementation.
+
+PHASE 2
+Document current alarm/song/data flow internally.
+
+PHASE 3
+Design updated models/data structures.
+
+PHASE 4
+Implement multiple-alarm persistence.
+
+PHASE 5
+Implement per-alarm names.
+
+PHASE 6
+Implement per-alarm song assignment.
+
+PHASE 7
+Implement per-alarm enabled state.
+
+PHASE 8
+Update alarm scheduling.
+
+PHASE 9
+Redesign AriaAlarm visual foundation.
+
+PHASE 10
+Build Next Alarm Hero.
+
+PHASE 11
+Build alarm list.
+
+PHASE 12
+Build alarm creation/editing flow.
+
+PHASE 13
+Build music library/selection flow.
+
+PHASE 14
+Implement animations.
+
+PHASE 15
+Implement empty/loading/error states.
+
+PHASE 16
+Integrate navigation.
+
+PHASE 17
+Test the complete application.
+
+==================================================
+80. TEST MULTIPLE ALARMS
+==================================================
+
+Explicitly test:
+
+Alarm A:
+06:25
+Morning Run
+Song A
+Enabled
+
+Alarm B:
+07:30
+University
+Song B
+Enabled
+
+Alarm C:
+09:00
+Weekend
+Song C
+Disabled
+
+Verify:
+
+- all appear
+- each can be edited
+- each can be enabled/disabled independently
+- each references the correct song
+- each schedules independently
+- disabling A reveals B as next alarm
+- deleting B does not affect A/C
+- editing C does not alter A/B
+
+==================================================
+81. TEST SONG ASSIGNMENT
+==================================================
+
+Create at least several songs.
+
+Assign:
+
+Alarm A → Song A
+Alarm B → Song B
+Alarm C → Song C
+
+Verify they remain correctly associated after:
+
+- restarting app
+- editing alarm
+- disabling alarm
+- enabling alarm
+- navigating away
+- reopening screen
+
+==================================================
+82. TEST SONG DELETION
+==================================================
+
+If a song is deleted:
+
+verify alarms referencing it behave according to the defined fallback behavior.
+
+Do not crash.
+
+==================================================
+83. TEST EXISTING DATA
+==================================================
+
+If there is an existing single alarm in the application:
+
+verify it survives the upgrade/migration.
+
+Existing MP3s must also survive.
+
+Do not reset existing data.
+
+==================================================
+84. TEST VISUAL RESPONSIVENESS
+==================================================
+
+Test:
+
+- small screen
+- large/tall screen
+- normal font
+- larger accessibility font
+
+Ensure:
+
+- time does not clip
+- song names do not overflow badly
+- alarm cards remain readable
+- buttons remain accessible
+- next alarm hero remains balanced
+
+==================================================
+85. TEST REDUCED MOTION
+==================================================
+
+Where possible, respect reduced-motion preferences.
+
+If reduced motion is enabled:
+
+- minimize ambient animations
+- preserve functionality
+- retain state feedback
+- avoid continuous movement
+
+==================================================
+86. PERFORMANCE TEST
 ==================================================
 
 Ensure:
 
-- sufficient contrast
-- accessible text sizes
-- correct content descriptions
-- meaningful screen-reader labels
-- large enough touch targets
-- no state communicated only through color
-- reduced-motion compatibility where practical
-
-If the system requests reduced motion:
-
-- minimize or disable continuous lotus animation
-- preserve state communication
-- preserve functionality
+- scrolling remains smooth
+- audio preview starts/stops cleanly
+- no memory leaks
+- no excessive recomposition
+- no unnecessary database calls
+- no runaway timers
+- no continuously running animation when screen is not visible
 
 ==================================================
-40. RESPONSIVE DESIGN
+87. FINAL VISUAL QUALITY BAR
 ==================================================
 
-The screenshot is only a visual reference.
+The finished screen should feel like a premium alarm application.
 
-Do NOT hard-code exact screen coordinates.
+Look for these qualities:
 
-Support:
+CALM
+The interface should feel peaceful.
 
-- small Android phones
-- tall phones
-- different aspect ratios
-- different densities
-- text scaling
+PERSONAL
+Each alarm should feel like the user's own.
 
-The lotus should resize intelligently.
+CLEAR
+The user should instantly understand what happens next.
 
-Text should not overlap.
+ALIVE
+The UI should subtly react.
 
-Metrics should wrap gracefully.
+ELEGANT
+The design should not look like stock Android.
 
-Cards should not become distorted on unusual screen sizes.
-
-==================================================
-41. BUSINESS LOGIC / DATA INTEGRITY
-==================================================
-
-This is extremely important.
-
-Do not break:
-
-- screen-time tracking
-- app blocking
-- website blocking
-- restriction state
-- protection state
-- usage calculations
-- value calculations
-- navigation
-- backend synchronization
-
-If Supabase or another backend is already in the application:
-
-reuse the existing client/repositories/services.
-
-Do not instantiate duplicate clients.
-
-Do not move backend calls directly into UI components.
-
-Keep data and presentation separated.
+USEFUL
+Every major visual element should communicate information or provide an action.
 
 ==================================================
-42. ARCHITECTURE
+88. IMPORTANT THINGS TO AVOID
 ==================================================
 
-Keep the screen modular.
+Do NOT:
 
-Use appropriate reusable components.
-
-Conceptually:
-
-ZenSiloScreen
-├── ZenSiloHeader
-├── ProtectionHero
-│   ├── LotusVisualization
-│   ├── ProtectionStatus
-│   └── ProtectionControls
-├── ImpactSummary
-│   ├── TimeRecoveredMetric
-│   └── ScreenTimeMetric
-├── RestrictionsSection
-│   ├── LimitedAppsCard
-│   └── LimitedWebsitesCard
-├── DistractionSection
-│   ├── TopDistractionHeader
-│   └── DistractionItem
-├── ValueImpactSection
-│   └── ValueItem
-└── BottomNavigation
-
-Use names appropriate to the existing project.
-
-Do not create one massive screen file.
+- create one massive alarm card per alarm
+- use orange for every icon
+- use orange for every switch
+- create excessive borders
+- fill the screen with gradients
+- use excessive glow
+- use giant animations
+- constantly animate the page
+- use fake alarm data
+- hard-code songs
+- break existing MP3 functionality
+- create duplicate audio systems
+- create duplicate backend clients
+- put database logic directly in the UI
+- use temporary-only alarm state
+- lose existing alarms during migration
+- create a generic Android alarm clock design
+- make the interface resemble a settings screen
 
 ==================================================
-43. DO NOT REBUILD UNRELATED SCREENS
+89. FINAL VALIDATION CHECKLIST
 ==================================================
 
-Only modify components necessary to support this redesign.
+Before finishing, verify:
 
-Do not rewrite:
+UI:
+- Does the screen no longer feel empty?
+- Is the next alarm immediately obvious?
+- Are multiple alarms easy to scan?
+- Is each alarm clearly associated with its song?
+- Are enabled/disabled states obvious?
+- Is the interface visually balanced?
+- Is orange used strategically?
+- Are cards no longer repetitive?
 
-- authentication
-- unrelated screens
-- unrelated repositories
-- unrelated navigation
-- unrelated backend systems
+UX:
+- Can a user create an alarm quickly?
+- Can they name it?
+- Can they choose a song?
+- Can they edit it?
+- Can they enable/disable it?
+- Can they delete it?
+- Can they manage multiple alarms?
+- Can they preview songs?
+- Can they add more songs?
 
-unless the redesign genuinely requires a small shared component change.
+Motion:
+- Does the next alarm feel alive?
+- Do actions have tactile feedback?
+- Do list changes animate naturally?
+- Does the UI react to changes rather than jumping?
 
-==================================================
-44. DESIGN CONSISTENCY WITH THE REST OF THE APP
-==================================================
-
-The screen should feel like it belongs to the same application as the redesigned "Yourself" screen.
-
-Maintain the existing app identity:
-
-- dark aesthetic
-- elegant typography
-- orange as the primary accent
-- minimal UI
-- subtle modern motion
-
-However, Zen Silo should have its own visual personality.
-
-It should feel calmer and more protective than the "Yourself" screen.
-
-Think:
-
-Yourself = personal performance
-
-Zen Silo = digital protection / calm / control
-
-==================================================
-45. VISUAL HIERARCHY TEST
-==================================================
-
-When looking at the finished screen for one second, the eye should go approximately:
-
-1. Lotus / protection status
-2. Main metric
-3. Restrictions
-4. Supporting information
-5. Detailed usage
-
-If all elements appear equally important, redesign the hierarchy.
+Technical:
+- Does every alarm persist?
+- Does each alarm schedule independently?
+- Does disabling cancel scheduling?
+- Does editing reschedule correctly?
+- Does deleting remove scheduling?
+- Does the assigned song persist?
+- Does existing data survive?
+- Does existing MP3 functionality still work?
+- Does the project compile?
+- Does the application run?
 
 ==================================================
-46. REMOVE VISUAL REPETITION
+90. FINAL REPORT
 ==================================================
 
-The current screen has too many repeated patterns:
-
-- same orange icon treatment
-- same orange circular buttons
-- same outlined rectangular cards
-- similar text arrangement
-
-Actively eliminate this repetition.
-
-Use variation through:
-
-- scale
-- spacing
-- typography
-- icon treatment
-- surface treatment
-- content density
-
-But maintain enough consistency that the UI still feels like one system.
-
-==================================================
-47. VISUAL RESTRAINT
-==================================================
-
-Do not add effects simply because they are possible.
-
-Avoid:
-
-- excessive glow
-- excessive blur
-- giant shadows
-- particle explosions
-- constant movement
-- multiple bright accent colors
-- huge gradients
-- overly complicated charts
-
-The interface should feel expensive because it is restrained.
-
-==================================================
-48. IMPLEMENTATION PROCESS
-==================================================
-
-Follow this exact workflow:
-
-PHASE 1
-Inspect existing implementation.
-
-PHASE 2
-Identify current architecture and dependencies.
-
-PHASE 3
-Create/refine design tokens.
-
-PHASE 4
-Rebuild the header.
-
-PHASE 5
-Rebuild the protection hero.
-
-PHASE 6
-Implement animated lotus.
-
-PHASE 7
-Implement protection-state interactions.
-
-PHASE 8
-Rebuild impact metrics.
-
-PHASE 9
-Rebuild limited app/website controls.
-
-PHASE 10
-Rebuild top distraction section.
-
-PHASE 11
-Rebuild value/impact section.
-
-PHASE 12
-Add transitions and micro-interactions.
-
-PHASE 13
-Validate responsiveness/accessibility.
-
-PHASE 14
-Build and test the entire application.
-
-==================================================
-49. TESTING REQUIREMENTS
-==================================================
-
-After implementation:
-
-1. Compile the project.
-2. Resolve compilation errors.
-3. Run the application.
-4. Open Zen Silo.
-5. Verify protection active state.
-6. Verify protection inactive state.
-7. Verify lotus animation.
-8. Verify blocking events.
-9. Verify screen-time numbers.
-10. Verify restriction counts.
-11. Verify app navigation.
-12. Verify website navigation.
-13. Verify detailed usage.
-14. Verify value calculations.
-15. Verify scrolling.
-16. Verify text scaling.
-17. Verify touch targets.
-18. Verify performance.
-
-Do not stop after compiling.
-
-Actually inspect the rendered result.
-
-==================================================
-50. REFERENCE IMAGE
-==================================================
-
-Treat the attached screenshot as a reference for:
-
-- existing layout
-- existing lotus identity
-- existing content
-- existing information
-- current brand feel
-
-Do NOT copy the old visual implementation literally.
-
-Improve it.
-
-The final screen should look like:
-
-"Zen Silo 2.0"
-
-rather than simply a recolored version of the old UI.
-
-==================================================
-51. FINAL QUALITY CHECK
-==================================================
-
-Before declaring the work complete, ask:
-
-Does the lotus feel alive?
-
-Is protection the first thing I understand?
-
-Can I immediately tell whether protection is active?
-
-Are the statistics readable without effort?
-
-Are apps and websites visually distinguishable?
-
-Are orange elements reserved for meaningful states/actions?
-
-Have the repeated outlined cards been eliminated?
-
-Does the screen feel calm rather than cluttered?
-
-Do animations communicate actual events?
-
-Does the screen feel premium?
-
-Does anything look like a default Android component?
-
-Does the interface still work if animations are disabled?
-
-Does everything use real application data?
-
-Does the screen remain usable on smaller devices?
-
-Is the result visually consistent with the rest of the application?
-
-If the answer to any of these is no, refine the implementation.
-
-==================================================
-52. FINAL REPORT
-==================================================
-
-After implementation, provide:
+After implementing everything, provide:
 
 1. Files changed
-2. New components created
-3. Existing components modified
-4. Animation systems added
-5. Interaction changes
-6. Data/backend logic touched
-7. Dependencies added, if any
-8. Testing performed
-9. Any known issues
-10. Any design decisions that were necessary because of limitations in the existing codebase
+2. Components created
+3. Data models changed
+4. Database/backend changes
+5. Scheduling changes
+6. Song-management changes
+7. New user interactions
+8. Animation changes
+9. Migration strategy
+10. Dependencies added
+11. Testing performed
+12. Known limitations/issues
 
-Most importantly:
+Do not merely tell me what should be done.
 
-IMPLEMENT THE SCREEN.
+Actually implement it in the project.
 
-Do not merely give me instructions.
-Do not give me pseudo-code.
-Do not stop at a design proposal.
-
-Make the changes in the actual project.
+The final implementation should be production-quality and should make AriaAlarm feel like a major upgrade of the existing application.

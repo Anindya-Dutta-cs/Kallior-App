@@ -98,17 +98,18 @@ private fun AriaAlarmRingScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "AriaAlarm",
+            text = state.alarmName ?: "AriaAlarm",
             color = Color.White,
             fontSize = 40.sp,
             fontFamily = FontFamily.Serif,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = state.songName ?: "Alarm",
+            text = state.songName ?: "Alarm sound",
             color = Color.White,
             fontSize = 22.sp,
             textAlign = TextAlign.Center

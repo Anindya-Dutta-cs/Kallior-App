@@ -20,6 +20,7 @@ class AriaAlarmService : Service() {
         const val ACTION_START_RINGING = "ACTION_START_RINGING"
         const val ACTION_CONTINUE = "ACTION_CONTINUE"
         const val ACTION_DISMISS = "ACTION_DISMISS"
+        const val EXTRA_ALARM_ID = "extra_alarm_id"
 
         private const val PREVIEW_DURATION_MS = 30_000L
         private const val AUTO_STOP_AFTER_PAUSE_MS = 10 * 60 * 1000L
@@ -41,7 +42,8 @@ class AriaAlarmService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START_RINGING -> startRinging()
+            ACTION_START_RINGING ->
+                startRinging(intent.getLongExtra(EXTRA_ALARM_ID, -1L))
             ACTION_CONTINUE -> continuePlayback()
             ACTION_DISMISS -> stopRinging()
         }
@@ -49,25 +51,30 @@ class AriaAlarmService : Service() {
         return START_REDELIVER_INTENT
     }
 
-    private fun startRinging() {
+    private fun startRinging(alarmId: Long) {
         acquireWakeLock()
 
-        AriaAlarmPlayback.setPreview(null)
+        val alarm = if (alarmId >= 0L) AriaAlarmStore(this).find(alarmId) else null
+
+        // Play the alarm's assigned song; fall back to a random library song,
+        // then to the system alarm sound when the library is empty.
+        val assignedSong = repository.song(alarm?.songId)
+        val song = assignedSong ?: repository.randomSong()
+
+        AriaAlarmPlayback.setPreview(null, alarm?.name)
         startForegroundWithCurrentState()
 
         handler.removeCallbacksAndMessages(null)
 
-        val song = repository.randomSong()
-
         if (song == null) {
             usingFallbackSound = true
             shortSong = false
-            AriaAlarmPlayback.setPreview("System alarm sound")
+            AriaAlarmPlayback.setPreview("System alarm sound", alarm?.name)
             prepareFallbackAlarm()
         } else {
             usingFallbackSound = false
-            AriaAlarmPlayback.setPreview(song.name)
-            prepareSong(song)
+            AriaAlarmPlayback.setPreview(song.title, alarm?.name)
+            prepareSong(song.file)
         }
 
         startForegroundWithCurrentState()

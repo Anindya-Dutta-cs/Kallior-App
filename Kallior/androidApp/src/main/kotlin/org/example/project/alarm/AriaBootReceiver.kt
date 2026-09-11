@@ -18,9 +18,9 @@ class AriaBootReceiver : BroadcastReceiver() {
 
         if (action !in relevantActions) return
 
-        val prefs = AriaAlarmPreferences(context)
-        if (prefs.enabled) {
-            AriaAlarmScheduler.schedule(context)
-        }
+        // Store access migrates the legacy single alarm on the first run after
+        // an app update; then every enabled alarm is re-armed.
+        AriaAlarmStore(context)
+        AriaAlarmScheduler.rescheduleAll(context)
     }
 }

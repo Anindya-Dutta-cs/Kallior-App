@@ -49,6 +49,9 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.lottie.compose)
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    // kotlin.test's @Test is a typealias to JUnit4 on the JVM; the bare
+    // kotlin-test artifact only carries the assertions, so both parts are needed.
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:${libs.versions.kotlin.get()}")
+    testImplementation("junit:junit:4.13.2")
     testImplementation(libs.kotlinx.datetime)
 }

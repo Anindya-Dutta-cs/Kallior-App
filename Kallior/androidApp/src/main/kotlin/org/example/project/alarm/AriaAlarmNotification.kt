@@ -82,7 +82,7 @@ object AriaAlarmNotification {
 
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("AriaAlarm")
+            .setContentTitle(state.alarmName ?: "AriaAlarm")
             .setContentText(contentText)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)

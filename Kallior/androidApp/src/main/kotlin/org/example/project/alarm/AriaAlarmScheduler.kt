@@ -5,31 +5,35 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import java.util.Calendar
 
+/**
+ * Schedules [AlarmItem]s. Every alarm gets its own PendingIntent keyed by
+ * [AlarmItem.requestCode] and carrying the alarm id, so alarms can be
+ * scheduled, cancelled and edited independently.
+ */
 object AriaAlarmScheduler {
 
-    private const val REQUEST_CODE_ALARM = 4101
     private const val REQUEST_CODE_SHOW = 4102
+    private const val LEGACY_REQUEST_CODE_ALARM = 4101
 
-    fun schedule(context: Context): Boolean {
-        val prefs = AriaAlarmPreferences(context)
-        return schedule(context, prefs.hour, prefs.minute)
-    }
-
-    fun schedule(context: Context, hour: Int, minute: Int): Boolean {
+    /**
+     * Schedules (or replaces) the schedule for [alarm]. Daily recurrence.
+     * Returns false when exact alarms are not permitted for this app.
+     */
+    fun schedule(context: Context, alarm: AlarmItem): Boolean {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
             return false
         }
 
-        val triggerTime = nextTriggerTime(hour, minute)
+        val triggerTime = AriaAlarmTime.nextTriggerAt(alarm.hour, alarm.minute, alarm.repeatDays)
 
         val alarmIntent = Intent(context, AriaAlarmReceiver::class.java)
+            .putExtra(AriaAlarmReceiver.EXTRA_ALARM_ID, alarm.id)
         val alarmPendingIntent = PendingIntent.getBroadcast(
             context,
-            REQUEST_CODE_ALARM,
+            alarm.requestCode,
             alarmIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -49,13 +53,13 @@ object AriaAlarmScheduler {
         return true
     }
 
-    fun cancel(context: Context) {
+    fun cancel(context: Context, alarmId: Long) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
         val alarmIntent = Intent(context, AriaAlarmReceiver::class.java)
         val alarmPendingIntent = PendingIntent.getBroadcast(
             context,
-            REQUEST_CODE_ALARM,
+            (AlarmItem.REQUEST_CODE_BASE + alarmId).toInt(),
             alarmIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -63,20 +67,26 @@ object AriaAlarmScheduler {
         alarmManager.cancel(alarmPendingIntent)
     }
 
-    fun nextTriggerTime(hour: Int, minute: Int): Long {
-        val now = Calendar.getInstance()
+    /** Schedules every enabled alarm. Used after boot, package update or time changes. */
+    fun rescheduleAll(context: Context) {
+        AriaAlarmStore(context)
+            .loadAll()
+            .filter { it.enabled }
+            .forEach { schedule(context, it) }
+    }
 
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
+    /** Cancels the pre-migration single-alarm PendingIntent so it cannot fire as a ghost. */
+    fun cancelLegacy(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        if (!calendar.after(now)) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
-        }
+        val alarmIntent = Intent(context, AriaAlarmReceiver::class.java)
+        val legacyPendingIntent = PendingIntent.getBroadcast(
+            context,
+            LEGACY_REQUEST_CODE_ALARM,
+            alarmIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
-        return calendar.timeInMillis
+        alarmManager.cancel(legacyPendingIntent)
     }
 }

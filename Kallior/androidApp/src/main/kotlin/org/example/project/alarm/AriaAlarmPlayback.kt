@@ -16,17 +16,19 @@ object AriaAlarmPlayback {
 
     data class UiState(
         val phase: Phase = Phase.IDLE,
-        val songName: String? = null
+        val songName: String? = null,
+        val alarmName: String? = null
     )
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    fun setPreview(songName: String?) {
+    fun setPreview(songName: String?, alarmName: String? = null) {
         _uiState.update {
             it.copy(
                 phase = Phase.PREVIEW,
-                songName = songName
+                songName = songName,
+                alarmName = alarmName
             )
         }
     }

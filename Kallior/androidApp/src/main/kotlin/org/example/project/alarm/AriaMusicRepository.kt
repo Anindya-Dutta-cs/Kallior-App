@@ -1,19 +1,34 @@
 package org.example.project.alarm
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Environment
 import android.provider.OpenableColumns
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 data class AriaImportResult(
     val imported: List<File>,
     val skipped: Int
 )
 
+/**
+ * A song in the AriaAlarm library. [id] is the file name inside the music
+ * directory and is what alarms store as their song reference.
+ */
+data class AriaSong(
+    val id: String,
+    val title: String,
+    val file: File
+)
+
 class AriaMusicRepository(context: Context) {
 
     private val appContext = context.applicationContext
+    private val artistCache = ConcurrentHashMap<String, String>()
 
     private val musicDir: File by lazy {
         File(appContext.getExternalFilesDir(Environment.DIRECTORY_MUSIC), "AriaAlarm")
@@ -59,7 +74,57 @@ class AriaMusicRepository(context: Context) {
         return AriaImportResult(imported, skipped)
     }
 
-    fun songs(): List<File> {
+    fun songs(): List<AriaSong> {
+        return songFiles().map { it.toSong() }
+    }
+
+    fun song(id: String?): AriaSong? {
+        if (id.isNullOrBlank()) return null
+        if (id.contains(File.separatorChar) || id.contains("..")) return null
+
+        val file = File(musicDir, id)
+        val valid = file.isFile &&
+            file.extension.equals("mp3", ignoreCase = true) &&
+            file.length() > 0L
+
+        return if (valid) file.toSong() else null
+    }
+
+    fun randomSong(): AriaSong? = songs().randomOrNull()
+
+    /** Artist from the file's embedded metadata, if available. Cached per song. */
+    suspend fun artistOf(song: AriaSong): String? {
+        val cached = artistCache[song.id]
+        if (cached != null) return cached.takeIf { it.isNotEmpty() }
+
+        return withContext(Dispatchers.IO) {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(song.file.absolutePath)
+                val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                    ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+
+                // ConcurrentHashMap does not allow null values.
+                // We use an empty string as a sentinel for "no metadata found".
+                artistCache[song.id] = artist ?: ""
+                artist
+            } catch (_: Exception) {
+                artistCache[song.id] = ""
+                null
+            } finally {
+                retriever.release()
+            }
+        }
+    }
+
+    fun deleteSong(id: String) {
+        artistCache.remove(id)
+        song(id)?.file?.takeIf { it.exists() }?.delete()
+    }
+
+    fun musicDirectory(): File = musicDir
+
+    private fun songFiles(): List<File> {
         return musicDir.listFiles { file ->
             file.isFile && file.extension.equals("mp3", ignoreCase = true) && file.length() > 0L
         }
@@ -67,15 +132,11 @@ class AriaMusicRepository(context: Context) {
             ?: emptyList()
     }
 
-    fun randomSong(): File? = songs().randomOrNull()
-
-    fun deleteSong(file: File) {
-        if (file.exists()) {
-            file.delete()
-        }
-    }
-
-    fun musicDirectory(): File = musicDir
+    private fun File.toSong() = AriaSong(
+        id = name,
+        title = nameWithoutExtension,
+        file = this
+    )
 
     private fun queryDisplayName(uri: Uri): String? {
         return appContext.contentResolver.query(

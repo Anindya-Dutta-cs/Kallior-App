@@ -11,98 +11,77 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimeInput
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import org.example.project.R
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.DialogWindowProvider
-import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.example.project.alarm.AriaAlarmPreferences
 import org.example.project.alarm.AriaAlarmScheduler
+import org.example.project.alarm.AriaAlarmStore
+import org.example.project.alarm.AriaAlarmTime
+import org.example.project.alarm.AlarmItem
 import org.example.project.alarm.AriaMusicRepository
-import java.io.File
-import java.util.Locale
+import org.example.project.alarm.AriaSong
 
 @Composable
 fun AriaAlarmScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val repository = remember { AriaMusicRepository(context) }
-    val prefs = remember { AriaAlarmPreferences(context) }
+    val store = remember { AriaAlarmStore(context) }
     val alarmManager = remember {
         context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     }
 
-    var songs by remember { mutableStateOf<List<File>>(emptyList()) }
-    var alarmEnabled by remember { mutableStateOf(prefs.enabled) }
-    var hour by remember { mutableIntStateOf(prefs.hour) }
-    var minute by remember { mutableIntStateOf(prefs.minute) }
-    var showTimePicker by remember { mutableStateOf(false) }
+    var alarms by remember { mutableStateOf(store.loadAll()) }
+    var songs by remember { mutableStateOf(repository.songs()) }
     var isImporting by remember { mutableStateOf(false) }
-
     var canScheduleExact by remember {
         mutableStateOf(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -112,38 +91,152 @@ fun AriaAlarmScreen() {
             }
         )
     }
+    var editorTarget by remember { mutableStateOf<AlarmItem?>(null) }
+    var showEditor by remember { mutableStateOf(false) }
+    var deleteTarget by remember { mutableStateOf<AlarmItem?>(null) }
+    var selectedAlarmId by remember { mutableStateOf<Long?>(null) }
+    var pendingEnableId by remember { mutableStateOf<Long?>(null) }
+    var pendingNotifResult by remember { mutableStateOf<Boolean?>(null) }
+    // The alarm card whose context menu is open, if any. While one is
+    // focused, the rest of the screen recedes behind a soft blur.
+    var focusedMenuAlarmId by remember { mutableStateOf<Long?>(null) }
 
-    // Re-check exact alarm permission when returning from settings
-    val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(lifecycleOwner) {
-        lifecycleOwner.lifecycle.addObserver(
-            LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        canScheduleExact = alarmManager.canScheduleExactAlarms()
-                    }
-                    songs = repository.songs()
-                }
-            }
-        )
+    val previewState by AriaSongPreview.state.collectAsState()
+
+    // 0 = everything normal, 1 = a context menu is focused and the rest of
+    // the screen is receded. Shared so every section moves together.
+    val menuRecede by animateFloatAsState(
+        targetValue = if (focusedMenuAlarmId != null) 1f else 0f,
+        animationSpec = tween(240, easing = FastOutSlowInEasing),
+        label = "menuRecede"
+    )
+
+    val nextAlarm = remember(alarms) {
+        alarms.filter { it.enabled }.minByOrNull {
+            AriaAlarmTime.nextTriggerAt(it.hour, it.minute, it.repeatDays)
+        }
     }
 
-    // Notification permission launcher (Android 13+)
+    // The hero shows the alarm tapped in the list; when the selection is gone
+    // (never made, or the alarm was deleted) it falls back to the next alarm.
+    val heroAlarm = alarms.firstOrNull { it.id == selectedAlarmId } ?: nextAlarm
+
+    fun refreshAlarms() {
+        alarms = store.loadAll()
+    }
+
+    fun refreshSongs() {
+        songs = repository.songs()
+    }
+
+    // Notification permission request (Android 13+); the result is consumed below.
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted && alarmEnabled) {
-            val scheduled = AriaAlarmScheduler.schedule(context, hour, minute)
-            if (!scheduled) {
+        pendingNotifResult = granted
+    }
+
+    fun scheduleEnabledAlarm(alarm: AlarmItem) {
+        val scheduled = AriaAlarmScheduler.schedule(context, alarm)
+        if (!scheduled) {
+            store.setEnabled(alarm.id, false)
+            refreshAlarms()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 canScheduleExact = false
             }
         }
     }
 
+    fun commitEnable(alarm: AlarmItem) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingEnableId = alarm.id
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        scheduleEnabledAlarm(alarm)
+    }
+
+    fun toggleAlarm(alarm: AlarmItem, enabled: Boolean) {
+        store.setEnabled(alarm.id, enabled)
+        refreshAlarms()
+
+        if (enabled) {
+            commitEnable(alarm)
+        } else {
+            AriaAlarmScheduler.cancel(context, alarm.id)
+        }
+    }
+
+    fun saveAlarm(
+        name: String,
+        hour: Int,
+        minute: Int,
+        repeatDays: Set<Int>,
+        songId: String?,
+        enabled: Boolean
+    ) {
+        val target = editorTarget
+        val alarm = if (target != null) {
+            AlarmItem(
+                id = target.id,
+                name = name,
+                hour = hour,
+                minute = minute,
+                enabled = enabled,
+                songId = songId,
+                repeatDays = repeatDays
+            ).also { store.upsert(it) }
+        } else {
+            store.insert(
+                name = name,
+                hour = hour,
+                minute = minute,
+                enabled = enabled,
+                songId = songId,
+                repeatDays = repeatDays
+            )
+        }
+        refreshAlarms()
+
+        // A newly created alarm may have changed the schedule; return the
+        // hero to its next-alarm duty. Edits keep the current selection.
+        if (target == null) {
+            selectedAlarmId = null
+        }
+
+        if (enabled) {
+            commitEnable(alarm)
+        } else {
+            AriaAlarmScheduler.cancel(context, alarm.id)
+        }
+    }
+
+    fun deleteAlarm(id: Long) {
+        AriaAlarmScheduler.cancel(context, id)
+        store.delete(id)
+        refreshAlarms()
+    }
+
+    fun deleteSong(song: AriaSong) {
+        if (previewState.songId == song.id) {
+            AriaSongPreview.stop()
+        }
+        repository.deleteSong(song.id)
+        // Alarms referencing this song fall back to "No song selected".
+        store.clearSong(song.id)
+        refreshSongs()
+        refreshAlarms()
+    }
+
     // SAF document picker
     val documentPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
-    ) { uris: List<Uri> ->
+    ) { uris ->
         if (uris.isNotEmpty()) {
             isImporting = true
             scope.launch {
@@ -151,7 +244,7 @@ fun AriaAlarmScreen() {
                     repository.importMp3Files(uris)
                 }
                 isImporting = false
-                songs = repository.songs()
+                refreshSongs()
 
                 val msg = if (result.skipped > 0) {
                     "Imported ${result.imported.size} song(s), skipped ${result.skipped} non-MP3 file(s)."
@@ -163,474 +256,266 @@ fun AriaAlarmScreen() {
         }
     }
 
-    // Initial load
-    LaunchedEffect(Unit) {
-        songs = repository.songs()
+    // Consume a notification permission result: schedule the exact alarm that
+    // was being enabled — either way, the alarm can still ring without notifications.
+    LaunchedEffect(pendingNotifResult) {
+        val granted = pendingNotifResult ?: return@LaunchedEffect
+        pendingNotifResult = null
+        val id = pendingEnableId
+        pendingEnableId = null
+        val alarm = id?.let { store.find(it) }
+        if (alarm != null && alarm.enabled) {
+            scheduleEnabledAlarm(alarm)
+        }
     }
 
-    // Scrollable background
+    // Re-check exact alarm permission and refresh data when returning to the screen.
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.addObserver(
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        canScheduleExact = alarmManager.canScheduleExactAlarms()
+                    }
+                    refreshSongs()
+                    refreshAlarms()
+                }
+            }
+        )
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            AriaSongPreview.stop()
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(KalliorColors.SecondaryBackground)
     ) {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(horizontal = 36.dp)
+                .windowInsetsPadding(WindowInsets.statusBars),
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 150.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Padding preserved
-            Box(modifier = Modifier.size(36.dp))
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Title
-            Text(
-                text = "AriaAlarm",
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontFamily = FontFamily.Serif,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 40.sp
-                ),
-                color = KalliorColors.NormalText
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Upload your .mp3 files and start\nyour morning with a bang",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontFamily = FontFamily.Serif,
-                    fontSize = 18.sp,
-                    lineHeight = 24.sp
-                ),
-                color = KalliorColors.NormalText
-            )
-
-            Spacer(modifier = Modifier.height(60.dp))
-
-            // ── Songs Section ────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 40.dp)
-            ) {
-                Column {
-                    // Song card header row (+ button)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Songs (${songs.size})",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontFamily = FontFamily.Serif,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 24.sp
-                            ),
-                            color = KalliorColors.NormalText
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(KalliorColors.AccentOrange)
-                                .clickable(enabled = !isImporting) {
-                                    documentPickerLauncher.launch(arrayOf("audio/*"))
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = if (isImporting) "Importing…" else "Upload",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    // Song list card
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(songsListHeight(songs.size))
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(KalliorColors.PrimaryLayer),
-                        contentAlignment = if (songs.isEmpty()) Alignment.Center else Alignment.TopStart
-                    ) {
-                        if (songs.isEmpty()) {
-                            Text(
-                                text = if (isImporting) "Importing…" else "Tap the '+' to upload",
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontFamily = FontFamily.Serif,
-                                    fontSize = 18.sp
-                                ),
-                                color = KalliorColors.MutedText,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(24.dp)
-                            )
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                                userScrollEnabled = songs.size > 6
-                            ) {
-                                items(items = songs, key = { it.absolutePath }) { song ->
-                                    SongRow(
-                                        name = song.nameWithoutExtension,
-                                        onDelete = {
-                                            repository.deleteSong(song)
-                                            songs = repository.songs()
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── Alarm Settings Section ──────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 40.dp)
-            ) {
+            item(key = "header") {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(KalliorColors.PrimaryLayer)
-                        .padding(24.dp)
+                        .padding(top = 20.dp)
+                        .entrance(0L)
+                        .menuRecede(menuRecede)
                 ) {
                     Text(
-                        text = "Alarm",
-                        style = MaterialTheme.typography.titleLarge.copy(
+                        text = "AriaAlarm",
+                        style = MaterialTheme.typography.displaySmall.copy(
                             fontFamily = FontFamily.Serif,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 24.sp
+                            fontSize = 36.sp
                         ),
                         color = KalliorColors.NormalText
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(Modifier.height(6.dp))
 
-                    // Time selector
-                    Row(
+                    Text(
+                        text = "Wake up to something worth hearing.",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = FontFamily.Serif,
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp
+                        ),
+                        color = KalliorColors.MutedText
+                    )
+                }
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                !canScheduleExact &&
+                alarms.any { it.enabled }
+            ) {
+                item(key = "banner") {
+                    Text(
+                        text = "Exact alarm permission is required. Tap to grant.",
+                        fontSize = 13.sp,
+                        color = KalliorColors.AccentOrange,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(KalliorColors.ForegroundCard)
-                            .clickable { showTimePicker = true }
-                            .padding(horizontal = 16.dp, vertical = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Time",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontFamily = FontFamily.Serif,
-                                fontSize = 18.sp
-                            ),
-                            color = KalliorColors.NormalText
-                        )
-
-                        Text(
-                            text = String.format(Locale.getDefault(), "%02d:%02d", hour, minute),
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontFamily = FontFamily.Serif,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = KalliorColors.AccentOrange
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Enable/disable toggle
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(KalliorColors.ForegroundCard)
+                            .padding(top = 12.dp)
+                            .menuRecede(menuRecede)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(KalliorColors.AccentOrange.copy(alpha = 0.08f))
                             .clickable {
-                                val newState = !alarmEnabled
-                                alarmEnabled = newState
-                                prefs.enabled = newState
-
-                                if (newState) {
-                                    enableAlarm(context, prefs, alarmManager, hour, minute) { perm ->
-                                        if (perm == "notification") {
-                                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        } else {
-                                            canScheduleExact = false
-                                        }
-                                    }
-                                } else {
-                                    AriaAlarmScheduler.cancel(context)
-                                }
-                            }
-                            .padding(horizontal = 16.dp, vertical = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Enabled",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontFamily = FontFamily.Serif,
-                                fontSize = 18.sp
-                            ),
-                            color = KalliorColors.NormalText
-                        )
-
-                        Switch(
-                            checked = alarmEnabled,
-                            onCheckedChange = { enabled ->
-                                alarmEnabled = enabled
-                                prefs.enabled = enabled
-
-                                if (enabled) {
-                                    enableAlarm(context, prefs, alarmManager, hour, minute) { perm ->
-                                        if (perm == "notification") {
-                                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        } else {
-                                            canScheduleExact = false
-                                        }
-                                    }
-                                } else {
-                                    AriaAlarmScheduler.cancel(context)
-                                }
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = KalliorColors.AccentOrange,
-                                uncheckedThumbColor = Color.White,
-                                uncheckedTrackColor = KalliorColors.ForegroundCard
-                            )
-                        )
-                    }
-
-                    // Permission warnings
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !canScheduleExact && alarmEnabled) {
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Text(
-                            text = "Exact alarm permission is required. Tap to grant.",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 14.sp
-                            ),
-                            color = KalliorColors.AccentOrange,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    val intent = Intent(
+                                context.startActivity(
+                                    Intent(
                                         Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
                                         Uri.parse("package:${context.packageName}")
                                     )
-                                    context.startActivity(intent)
-                                }
-                                .padding(4.dp)
-                        )
-                    }
+                                )
+                            }
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(140.dp))
-        }
-    }
-
-    // ── Time Picker Dialog ─────────────────────────────────────
-    if (showTimePicker) {
-        TimePickerDialog(
-            initialHour = hour,
-            initialMinute = minute,
-            onConfirm = { h, m ->
-                hour = h
-                minute = m
-                prefs.hour = h
-                prefs.minute = m
-
-                if (alarmEnabled) {
-                    AriaAlarmScheduler.cancel(context)
-                    enableAlarm(context, prefs, alarmManager, h, m) { perm ->
-                        if (perm == "notification") {
-                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            canScheduleExact = false
+            item(key = "hero") {
+                NextAlarmHero(
+                    alarm = heroAlarm,
+                    nextAlarmId = nextAlarm?.id,
+                    songs = songs,
+                    previewSongId = previewState.songId,
+                    modifier = Modifier
+                        .padding(top = 20.dp)
+                        .entrance(90L)
+                        .menuRecede(menuRecede),
+                    onToggle = { alarmId, enabled ->
+                        alarms.firstOrNull { it.id == alarmId }?.let {
+                            toggleAlarm(it, enabled)
                         }
+                    },
+                    onClick = { alarm ->
+                        editorTarget = alarm
+                        showEditor = true
+                    }
+                )
+            }
+
+            item(key = "alarmsHeader") {
+                SectionHeader(
+                    title = "Alarms",
+                    modifier = Modifier
+                        .padding(top = 28.dp)
+                        .entrance(160L)
+                        .menuRecede(menuRecede)
+                ) {
+                    AccentAddButton(description = "Add alarm") {
+                        editorTarget = null
+                        showEditor = true
                     }
                 }
-                showTimePicker = false
+            }
+
+            if (alarms.isEmpty()) {
+                item(key = "alarmsEmpty") {
+                    AriaEmptyState(
+                        title = "No alarms yet",
+                        body = "Create your first alarm and wake up\nto your own soundtrack.",
+                        actionLabel = "+ Create Alarm",
+                        modifier = Modifier.padding(top = 12.dp).menuRecede(menuRecede),
+                        onAction = {
+                            editorTarget = null
+                            showEditor = true
+                        }
+                    )
+                }
+            } else {
+                items(alarms, key = { it.id }) { alarm ->
+                    AlarmCard(
+                        alarm = alarm,
+                        isNext = nextAlarm?.id == alarm.id,
+                        songTitle = songs.firstOrNull { it.id == alarm.songId }?.title,
+                        isSelected = selectedAlarmId == alarm.id,
+                        isMenuFocused = focusedMenuAlarmId == alarm.id,
+                        recedeProgress = menuRecede,
+                        modifier = Modifier
+                            .padding(top = 10.dp)
+                            .animateItem(),
+                        onToggle = { enabled -> toggleAlarm(alarm, enabled) },
+                        onSelect = { selectedAlarmId = alarm.id },
+                        onEdit = {
+                            editorTarget = alarm
+                            showEditor = true
+                        },
+                        onDelete = { deleteTarget = alarm },
+                        onMenuFocusChange = { focused ->
+                            focusedMenuAlarmId = if (focused) alarm.id else null
+                        }
+                    )
+                }
+            }
+
+            item(key = "musicHeader") {
+                SectionHeader(
+                    title = "Music (${songs.size})",
+                    modifier = Modifier
+                        .padding(top = 28.dp)
+                        .entrance(240L)
+                        .menuRecede(menuRecede)
+                ) {
+                    AccentAddButton(description = "Add song", enabled = !isImporting) {
+                        documentPickerLauncher.launch(arrayOf("audio/*"))
+                    }
+                }
+            }
+
+            if (songs.isEmpty()) {
+                item(key = "musicEmpty") {
+                    AriaEmptyState(
+                        title = if (isImporting) "Importing…" else "Your music library is empty",
+                        body = if (isImporting) {
+                            "Adding your songs to AriaAlarm."
+                        } else {
+                            "Add an MP3\nto personalize your alarms."
+                        },
+                        actionLabel = "Add Song",
+                        modifier = Modifier.padding(top = 12.dp).menuRecede(menuRecede),
+                        onAction = {
+                            documentPickerLauncher.launch(arrayOf("audio/*"))
+                        }
+                    )
+                }
+            } else {
+                items(songs, key = { it.id }) { song ->
+                    SongLibraryRow(
+                        song = song,
+                        isPreviewing = previewState.songId == song.id,
+                        loadArtist = { repository.artistOf(it) },
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .animateItem()
+                            .menuRecede(menuRecede),
+                        onTogglePreview = { AriaSongPreview.toggle(song) },
+                        onDelete = { deleteSong(song) }
+                    )
+                }
+            }
+
+            item(key = "bottomSpace") {
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+
+    if (showEditor) {
+        AriaAlarmEditorSheet(
+            existing = editorTarget,
+            songs = songs,
+            onDismiss = {
+                showEditor = false
+                editorTarget = null
             },
-            onDismiss = { showTimePicker = false }
-        )
-    }
-}
-
-@Composable
-private fun SongRow(
-    name: String,
-    onDelete: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = name,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontFamily = FontFamily.Serif,
-                fontSize = 16.sp
-            ),
-            color = KalliorColors.NormalText,
-            modifier = Modifier.weight(1f),
-            maxLines = 1
-        )
-
-        IconButton(
-            onClick = onDelete,
-            modifier = Modifier.size(36.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Delete song",
-                tint = KalliorColors.DangerRed,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimePickerDialog(
-    initialHour: Int,
-    initialMinute: Int,
-    onConfirm: (hour: Int, minute: Int) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val state = remember {
-        TimePickerState(
-            initialHour = initialHour,
-            initialMinute = initialMinute,
-            is24Hour = true
-        )
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = KalliorColors.PrimaryLayer,
-        titleContentColor = KalliorColors.NormalText,
-        textContentColor = KalliorColors.NormalText,
-        title = {
-            val view = LocalView.current
-            SideEffect {
-                val window = (view.parent as? DialogWindowProvider)?.window
-                if (window != null) {
-                    window.navigationBarColor = 0xFF161616.toInt()
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        window.isNavigationBarContrastEnforced = false
-                    }
+            onSave = { name, hour, minute, repeatDays, songId, enabled ->
+                saveAlarm(name, hour, minute, repeatDays, songId, enabled)
+            },
+            onDelete = editorTarget?.let { target ->
+                {
+                    deleteAlarm(target.id)
                 }
             }
-            Text(
-                text = "Select alarm time",
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-        },
-        text = {
-            Box(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                TimeInput(state = state)
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                onConfirm(state.hour, state.minute)
-            }) {
-                Text(
-                    "OK",
-                    color = KalliorColors.AccentOrange,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    "Cancel",
-                    color = KalliorColors.MutedText
-                )
-            }
-        }
-    )
-}
-
-/**
- * Attempts to enable the alarm, requesting necessary permissions first.
- * Calls [onPermissionNeeded] with either "notification" or "schedule_exact_alarm"
- * if a permission is missing, so the caller can launch the appropriate intent.
- */
-private fun enableAlarm(
-    context: Context,
-    prefs: AriaAlarmPreferences,
-    alarmManager: AlarmManager,
-    hour: Int,
-    minute: Int,
-    onPermissionNeeded: (String) -> Unit
-) {
-    // Check notification permission (Android 13+)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        if (ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            onPermissionNeeded("notification")
-            return
-        }
+        )
     }
 
-    // Check exact alarm permission (Android 12+)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        if (!alarmManager.canScheduleExactAlarms()) {
-            onPermissionNeeded("schedule_exact_alarm")
-            prefs.enabled = false
-            return
-        }
+    deleteTarget?.let { target ->
+        AriaDeleteAlarmDialog(
+            alarmName = target.name,
+            onConfirm = {
+                deleteTarget = null
+                deleteAlarm(target.id)
+            },
+            onDismiss = { deleteTarget = null }
+        )
     }
-
-    val scheduled = AriaAlarmScheduler.schedule(context, hour, minute)
-    if (!scheduled) {
-        onPermissionNeeded("schedule_exact_alarm")
-        prefs.enabled = false
-    }
-}
-
-/** Fixed height so the nested [LazyColumn] renders without an inner scroll. */
-private fun songsListHeight(count: Int): androidx.compose.ui.unit.Dp {
-    if (count <= 0) return 200.dp
-    val row = 48.dp
-    val gap = 4.dp
-    val content = row * count.coerceAtMost(6) + gap * (count.coerceAtMost(6) - 1)
-    return content + 24.dp // padding
 }

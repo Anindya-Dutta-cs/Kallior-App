@@ -19,6 +19,10 @@ class AriaAlarmPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_ENABLED, value).apply()
 
+    /** True when a legacy single alarm was configured (used by [AriaAlarmStore] migration). */
+    val hasAlarm: Boolean
+        get() = prefs.contains(KEY_HOUR)
+
     companion object {
         private const val PREFS_NAME = "aria_alarm"
         private const val KEY_HOUR = "aria_alarm_hour"
