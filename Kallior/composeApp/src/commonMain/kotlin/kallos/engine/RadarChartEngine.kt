@@ -4,9 +4,14 @@ import kallos.domain.DailyMetricSnapshot
 import kallos.domain.RadarScores
 
 object RadarChartEngine {
-    private const val ENTERTAINMENT_ALLOWANCE_MINUTES = 45.0
+    /** Configurable entertainment allowance (minutes). Set from Settings → Screen Use. */
+    var entertainmentAllowanceMinutes = 45.0
+
     private const val SLEEP_TARGET_MINUTES = 470.0
-    private const val STEP_TARGET = 8000.0
+
+    /** Configurable daily step target. Set from Settings → Activity Level. */
+    var stepTarget = 8000.0
+
     private const val COMPLETION_THRESHOLD = 0.80
     private const val NORMALIZED_MAX = 100.0
     private const val NO_TASKS_PENALTY = 25
@@ -48,7 +53,7 @@ object RadarChartEngine {
 
     private fun computeDiscipline(snapshot: DailyMetricSnapshot): Double {
         if (snapshot.totalScreenMinutes <= 0.0) return 100.0
-        val excess = snapshot.entertainmentMinutes - ENTERTAINMENT_ALLOWANCE_MINUTES
+        val excess = snapshot.entertainmentMinutes - entertainmentAllowanceMinutes
         if (excess < 0.0) return NORMALIZED_MAX
         return (NORMALIZED_MAX - (excess / snapshot.totalScreenMinutes) * NORMALIZED_MAX)
             .coerceIn(0.0, NORMALIZED_MAX)
@@ -65,7 +70,7 @@ object RadarChartEngine {
     }
 
     fun computeStepScore(steps: Int): Double {
-        return ((steps.toDouble() / STEP_TARGET) * NORMALIZED_MAX).coerceAtMost(NORMALIZED_MAX)
+        return ((steps.toDouble() / stepTarget) * NORMALIZED_MAX).coerceAtMost(NORMALIZED_MAX)
     }
 
     fun computeSleepScore(minutesSlept: Double): Double {

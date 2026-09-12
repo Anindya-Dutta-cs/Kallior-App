@@ -51,6 +51,7 @@ import org.example.project.ui.ProgressionFeedbackHost
 import org.example.project.ui.SettingsScreen
 import org.example.project.ui.FieldScoreScreen
 import org.example.project.ui.PlaceholderScreen
+import org.example.project.ui.PermissionManagerScreen
 
 /** CompositionLocal to track if the navigation bar should transition to a sheet. */
 val LocalNavBarTransition = compositionLocalOf { mutableStateOf(false) }
@@ -113,10 +114,14 @@ fun KalliorNavGraph(navController: NavHostController) {
                 composable("settings") {
                     SettingsScreen(
                         gameViewModel = gameViewModel,
+                        navController = navController,
                     )
                 }
                 composable("about") {
                     PlaceholderScreen("About Us")
+                }
+                composable("permissions") {
+                    PermissionManagerScreen()
                 }
                 composable(
                     route = "field_score/{fieldIndex}?isShadow={isShadow}",
