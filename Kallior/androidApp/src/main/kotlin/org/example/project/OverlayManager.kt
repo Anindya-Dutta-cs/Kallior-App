@@ -67,9 +67,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
@@ -87,9 +89,12 @@ class OverlayManager(
     private val appBlockerController: AppBlockerControllerImpl,
 ) {
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    private val foregroundDetector = ForegroundAppDetector(context)
     private var overlayView: View? = null
     private var overlayOwner: ComposeOverlayOwner? = null
     private var currentPackageName: String? = null
+    private var dismissWatcherJob: Job? = null
+    private val watcherScope = CoroutineScope(Dispatchers.Main + Job())
 
     fun isOverlayShowing(): Boolean = overlayView != null
 
@@ -102,6 +107,7 @@ class OverlayManager(
         if (overlayView != null) return true
         currentPackageName = packageName
 
+        val appName = foregroundDetector.getAppLabel(packageName)
         val owner = ComposeOverlayOwner().apply {
             onCreate()
         }
@@ -120,6 +126,7 @@ class OverlayManager(
                 ) {
                     MaterialTheme(colorScheme = darkColorScheme()) {
                         BlockingOverlay(
+                            blockedTitle = "$appName is Blocked",
                             onAllowUntilSelected = { minutes ->
                                 appBlockerController.allowAppTemporarily(packageName, minutes)
                                 hideOverlay()
@@ -157,6 +164,7 @@ class OverlayManager(
             // an attempt. (If the overlay was already up we returned true earlier,
             // so this only fires once per genuinely new blocked-app open.)
             BlockerStatsTracker.recordAttempt()
+            startDismissWatcher(packageName)
             true
         } catch (e: Exception) {
             val tag = when (e) {
@@ -175,7 +183,27 @@ class OverlayManager(
         }
     }
 
+    private fun startDismissWatcher(blockedPackage: String) {
+        dismissWatcherJob?.cancel()
+        dismissWatcherJob = watcherScope.launch {
+            while (overlayView != null && isActive) {
+                delay(250)
+                val fgInfo = foregroundDetector.getForegroundInfo()
+                val shouldDismiss = fgInfo == null ||
+                    fgInfo.isLauncher ||
+                    fgInfo.packageName != blockedPackage ||
+                    !foregroundDetector.isScreenInteractive()
+                if (shouldDismiss) {
+                    hideOverlay()
+                    break
+                }
+            }
+        }
+    }
+
     fun hideOverlay() {
+        dismissWatcherJob?.cancel()
+        dismissWatcherJob = null
         overlayView?.let {
             if (it.isAttachedToWindow) {
                 windowManager.removeView(it)
@@ -212,6 +240,28 @@ private fun goToHome(context: Context) {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK
     }
     context.startActivity(intent)
+}
+
+/** Shared utility to redirect the browser to google.com when a website block overlay is exited. */
+private fun redirectToGoogle(context: Context, browserPackage: String? = null) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com")).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        if (!browserPackage.isNullOrBlank()) {
+            setPackage(browserPackage)
+        }
+    }
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        try {
+            val fallback = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(fallback)
+        } catch (_: Exception) {
+            goToHome(context)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -312,13 +362,21 @@ private fun BlockingOverlay(
 
             Spacer(modifier = Modifier.weight(1.5f))
 
+            val titleFontSize = when {
+                blockedTitle.length > 24 -> 24.sp
+                blockedTitle.length > 16 -> 28.sp
+                else -> 34.sp
+            }
             Text(
                 text = blockedTitle,
-                fontSize = 36.sp,
+                fontSize = titleFontSize,
+                lineHeight = (titleFontSize.value * 1.2f).sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 fontFamily = FontFamily.Serif,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
 
             Spacer(modifier = Modifier.weight(2f))
@@ -450,19 +508,25 @@ private fun BlockingOverlay(
 class WebsiteBlockOverlayManager(private val context: Context) {
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val repository = WebsiteBlockerRepository(context)
+    private val foregroundDetector = ForegroundAppDetector(context)
     private var overlayView: View? = null
     private var overlayOwner: ComposeOverlayOwner? = null
     private var listenerJob: Job? = null
+    private var dismissWatcherJob: Job? = null
     private var initializeScope: CoroutineScope? = null
     private var isOverlayShowing = false
     private var currentDomain: String? = null
+    private var currentBlockedPackage: String? = null
 
     fun initialize(scope: CoroutineScope) {
         initializeScope = scope
         listenerJob = scope.launch(Dispatchers.Main.immediate) {
             BlockEventBus.blockEvents.collectLatest { event ->
                 if (!isOverlayShowing) {
-                    showOverlay(event.domain)
+                    val fgInfo = foregroundDetector.getForegroundInfo()
+                    if (fgInfo != null && foregroundDetector.isDomainRelatedToApp(event.domain, fgInfo)) {
+                        showOverlay(event.domain, fgInfo)
+                    }
                 }
             }
         }
@@ -471,13 +535,28 @@ class WebsiteBlockOverlayManager(private val context: Context) {
     fun destroy() {
         listenerJob?.cancel()
         listenerJob = null
+        dismissWatcherJob?.cancel()
+        dismissWatcherJob = null
         hideOverlay()
     }
 
-    private fun showOverlay(domain: String) {
+    private fun showOverlay(domain: String, foregroundInfo: ForegroundInfo) {
         if (isOverlayShowing) return
         isOverlayShowing = true
         currentDomain = domain
+        currentBlockedPackage = foregroundInfo.packageName
+
+        val websiteName = domain.removePrefix("www.").removeSuffix(".")
+        val isStandalone = foregroundInfo.isStandaloneBrowser && !foregroundInfo.isInAppBrowser && !foregroundInfo.isCustomTab
+        val title = if (!foregroundInfo.isStandaloneBrowser &&
+            !foregroundInfo.isInAppBrowser &&
+            !foregroundInfo.isCustomTab &&
+            foregroundInfo.appName.isNotBlank()
+        ) {
+            "${foregroundInfo.appName} is Blocked"
+        } else {
+            "$websiteName is Blocked"
+        }
 
         val owner = ComposeOverlayOwner().apply { onCreate() }
         overlayOwner = owner
@@ -494,7 +573,7 @@ class WebsiteBlockOverlayManager(private val context: Context) {
                 ) {
                     MaterialTheme(colorScheme = darkColorScheme()) {
                         BlockingOverlay(
-                            blockedTitle = "Website is Blocked",
+                            blockedTitle = title,
                             onAllowUntilSelected = { durationMinutes ->
                                 val expiry = System.currentTimeMillis() + (durationMinutes * 60_000L)
                                 // Immediate in-memory whitelist for the VPN service
@@ -517,7 +596,11 @@ class WebsiteBlockOverlayManager(private val context: Context) {
                             },
                             onExit = {
                                 hideOverlay()
-                                goToHome(context)
+                                if (isStandalone) {
+                                    redirectToGoogle(context, foregroundInfo.packageName)
+                                } else {
+                                    goToHome(context)
+                                }
                             },
                             onDismiss = { hideOverlay() }
                         )
@@ -548,10 +631,12 @@ class WebsiteBlockOverlayManager(private val context: Context) {
             owner.onResume()
             // A blocked website was opened and its overlay successfully engaged.
             BlockerStatsTracker.recordAttempt()
+            startDismissWatcher(foregroundInfo.packageName)
         } catch (e: Exception) {
             Log.e("WebsiteBlockOverlay", "Failed to add overlay", e)
             isOverlayShowing = false
             currentDomain = null
+            currentBlockedPackage = null
             overlayView = null
             owner.apply {
                 onPause()
@@ -561,7 +646,27 @@ class WebsiteBlockOverlayManager(private val context: Context) {
         }
     }
 
+    private fun startDismissWatcher(blockedPackage: String) {
+        dismissWatcherJob?.cancel()
+        dismissWatcherJob = initializeScope?.launch(Dispatchers.Main) {
+            while (isOverlayShowing && isActive) {
+                delay(250)
+                val currentFg = foregroundDetector.getForegroundInfo()
+                val shouldDismiss = currentFg == null ||
+                    currentFg.isLauncher ||
+                    !foregroundDetector.isScreenInteractive() ||
+                    currentFg.packageName != blockedPackage
+                if (shouldDismiss) {
+                    hideOverlay()
+                    break
+                }
+            }
+        }
+    }
+
     fun hideOverlay() {
+        dismissWatcherJob?.cancel()
+        dismissWatcherJob = null
         overlayView?.let {
             if (it.isAttachedToWindow) {
                 windowManager.removeView(it)
@@ -575,6 +680,7 @@ class WebsiteBlockOverlayManager(private val context: Context) {
         overlayOwner = null
         isOverlayShowing = false
         currentDomain = null
+        currentBlockedPackage = null
     }
 
     private fun refreshBrowser(domain: String) {

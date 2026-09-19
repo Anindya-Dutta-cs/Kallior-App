@@ -108,7 +108,7 @@ class AppBlockerForegroundService : Service() {
                     }
                 }
 
-                delay(1000)
+                delay(500)
             }
         }
     }

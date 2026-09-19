@@ -328,9 +328,10 @@ class WebsiteBlockerVpnService : VpnService() {
 
         VpnDiagnosticsStore.update { it.copy(queriesProcessed = it.queriesProcessed + 1) }
 
-        return if (shouldBlock(domain)) {
+        val matchingBlocked = getMatchingBlockedWebsite(domain)
+        return if (matchingBlocked != null) {
             VpnDiagnosticsStore.update { it.copy(queriesBlocked = it.queriesBlocked + 1) }
-            handleBlockedDomain(domain)
+            handleBlockedDomain(matchingBlocked)
             wrapDnsAnswer(clientIp, srcPort, forgeBlockedDnsAnswer(dnsPayload))
         } else {
             val upstream = forwardToUpstream(dnsPayload)
@@ -338,16 +339,19 @@ class WebsiteBlockerVpnService : VpnService() {
         }
     }
 
-    private fun shouldBlock(domain: String): Boolean {
-        if (BlockEventBus.isWhitelisted(domain)) return false
+    private fun getMatchingBlockedWebsite(domain: String): String? {
+        if (BlockEventBus.isWhitelisted(domain)) return null
         val normalizedDomain = domain.removeSuffix(".").lowercase()
-        return blockedWebsites.contains(normalizedDomain) || 
-               blockedWebsites.contains(normalizedDomain.removePrefix("www."))
+        val withoutWww = normalizedDomain.removePrefix("www.")
+        return blockedWebsites.firstOrNull { blocked ->
+            val b = blocked.lowercase().removePrefix("www.")
+            normalizedDomain == b || withoutWww == b || normalizedDomain.endsWith(".$b")
+        }
     }
 
     private fun handleBlockedDomain(domain: String) {
         val now = System.currentTimeMillis()
-        val normalized = domain.removeSuffix(".").lowercase()
+        val normalized = domain.removeSuffix(".").removePrefix("www.").lowercase()
         val lastEmitted = lastBlockEmission[normalized] ?: 0L
         if (now - lastEmitted > 2000) {
             lastBlockEmission[normalized] = now
