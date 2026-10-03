@@ -39,18 +39,25 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
 
     <application
-            android:name="org.example.project.KalliorApplication"
+            android:name="com.app.kallior.KalliorApplication"
             android:label="Kallior"
             android:theme="@style/Theme.Kallior">
 
         <activity
-                android:name="org.example.project.KalliorMainActivity"
+                android:name="com.app.kallior.KalliorMainActivity"
                 android:configChanges="orientation|screenSize|smallestScreenSize"
                 android:exported="true"
+                android:launchMode="singleTask"
                 android:supportsPictureInPicture="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="kallior" android:host="auth" />
             </intent-filter>
         </activity>
 
@@ -88,14 +95,14 @@
         <!-- Blocker / health / VPN services (from composeApp library manifest) -->
 
         <service
-            android:name="org.example.project.AppBlockerForegroundService"
+            android:name="com.app.kallior.AppBlockerForegroundService"
             android:foregroundServiceType="specialUse"
             android:exported="false">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Monitoring App Usage" />
         </service>
 
         <service
-            android:name="org.example.project.health.AccelerometerStepForegroundService"
+            android:name="com.app.kallior.health.AccelerometerStepForegroundService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
@@ -104,7 +111,7 @@
         </service>
 
         <service
-            android:name="org.example.project.health.SleepTrackingForegroundService"
+            android:name="com.app.kallior.health.SleepTrackingForegroundService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
@@ -113,11 +120,11 @@
         </service>
 
         <receiver
-            android:name="org.example.project.health.SleepTrackingAlarmReceiver"
+            android:name="com.app.kallior.health.SleepTrackingAlarmReceiver"
             android:exported="false" />
 
         <receiver
-            android:name="org.example.project.BootReceiver"
+            android:name="com.app.kallior.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -125,7 +132,7 @@
         </receiver>
 
         <service
-            android:name="org.example.project.WebsiteBlockerVpnService"
+            android:name="com.app.kallior.WebsiteBlockerVpnService"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:exported="false"
             android:foregroundServiceType="connectedDevice">

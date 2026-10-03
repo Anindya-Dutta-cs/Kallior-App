@@ -1,3 +1,5 @@
+﻿import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose") // required now — separate from org.jetbrains.compose
@@ -6,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "org.example.project"
+    namespace = "com.app.kallior"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "org.example.project"
+        applicationId = "com.app.kallior"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -19,6 +21,22 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+    // local.properties is ignored by Git; user-level Gradle properties take precedence for CI.
+    val localProperties = Properties().apply {
+        rootProject.file("local.properties").takeIf { it.isFile }?.inputStream()?.use(::load)
+    }
+    val supabaseUrl = providers.gradleProperty("SUPABASE_URL")
+        .orElse(localProperties.getProperty("SUPABASE_URL") ?: "")
+        .get()
+    val supabasePublishableKey = providers.gradleProperty("SUPABASE_PUBLISHABLE_KEY")
+        .orElse(localProperties.getProperty("SUPABASE_PUBLISHABLE_KEY") ?: "")
+        .get()
+    defaultConfig {
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabasePublishableKey\"")
     }
 
     compileOptions {
@@ -44,6 +62,7 @@ dependencies {
     implementation(libs.health.connect.client)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.ktor.client.okhttp)
+    implementation(libs.supabase.auth)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.javax.inject)
     implementation(libs.androidx.work.runtime)

@@ -38,3 +38,4 @@ node_modules/
 # OS files
 desktop.ini
 Thumbs.db
+SUPABASE_SETUP.md

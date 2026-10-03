@@ -1,4 +1,4 @@
-package kallos.platform
+﻿package kallos.platform
 
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -8,8 +8,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runBlocking
-import org.example.project.BlockerStatsTracker
-import org.example.project.health.HealthDependencies
+import com.app.kallior.BlockerStatsTracker
+import com.app.kallior.health.HealthDependencies
 import java.time.Instant
 
 class AndroidPlatformMetricsCollector : PlatformMetricsCollector {

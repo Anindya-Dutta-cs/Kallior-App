@@ -8,13 +8,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 /**
- * Contract tests for [SupabaseDataRepository]. These tests intentionally do not
- * require a live Supabase instance. They only verify the type contract and that
- * the four suspend functions are callable on the singleton client wired up by
- * [SupabaseManager]. A connection failure is acceptable; the goal is to prove
- * the surface matches [DataRepository].
+ * These tests do not require a live Supabase instance. They verify the type
+ * contract and, critically, that unauthenticated access fails before a network
+ * request can be made.
  */
 class SupabaseDataRepositoryTest {
 
@@ -22,6 +21,14 @@ class SupabaseDataRepositoryTest {
     fun repositoryImplementsDataRepository() {
         val repo: DataRepository = SupabaseDataRepository()
         assertNotNull(repo)
+    }
+
+    @Test
+    fun unauthenticatedRepositoryAccessIsRejectedBeforeNetworkUse() {
+        runBlocking {
+            val repo = SupabaseDataRepository()
+            assertFailsWith<IllegalArgumentException> { repo.fetchDailyStats() }
+        }
     }
 
     @Test

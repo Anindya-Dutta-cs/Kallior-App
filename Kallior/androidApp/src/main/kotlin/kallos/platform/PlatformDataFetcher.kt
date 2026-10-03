@@ -1,4 +1,4 @@
-package kallos.platform
+﻿package kallos.platform
 
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
@@ -18,7 +18,7 @@ import kallos.domain.ScreenTimeData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import org.example.project.TimeWastingAppsRepository
+import com.app.kallior.TimeWastingAppsRepository
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -224,7 +224,7 @@ class PlatformDataFetcher {
         // Fall back to the device's cumulative hardware step counter when no
         // Health Connect source has reported steps for today.
         val sensorSteps = runCatching {
-            org.example.project.health.FallbackStepCounter(context).readStepsForToday()
+            com.app.kallior.health.FallbackStepCounter(context).readStepsForToday()
         }.getOrNull()
         HealthData((sensorSteps ?: 0L).toDouble(), UNIT_COUNT)
     }
