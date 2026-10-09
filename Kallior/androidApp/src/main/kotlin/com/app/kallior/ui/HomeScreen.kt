@@ -13,6 +13,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
@@ -278,9 +280,16 @@ fun HomeScreen(
                 RadarChartView(
                     scores = radarValues,
                     axisIconPainters = radarIcons,
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(top = 20.dp),
                     onAxisTapped = { axisIndex ->
                         navController.navigate("field_score/$axisIndex")
+                    },
+                    onChartTapped = {
+                        if (scrollState.value > 0) {
+                            coroutineScope.launch {
+                                scrollState.animateScrollTo(0)
+                            }
+                        }
                     },
                 )
             }
@@ -290,7 +299,20 @@ fun HomeScreen(
                     .fillMaxSize()
                     .verticalScroll(scrollState),
             ) {
-                Spacer(modifier = Modifier.height(heroDp))
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(heroDp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = scrollState.value > 0,
+                        ) {
+                            coroutineScope.launch {
+                                scrollState.animateScrollTo(0)
+                            }
+                        },
+                )
                 PrimaryLayerContent(
                     tasks = gameViewModel.tasks.map {
                         TaskUi(it, ShadowTaskState.PENDING, it.status == TaskStatus.Completed)
@@ -455,6 +477,7 @@ fun ShadowOverlay(
         label = "shadowRadarScale",
     )
     val density = LocalDensity.current
+    val coroutineScope = rememberCoroutineScope()
     var heroHeightPx by remember { mutableIntStateOf(0) }
     val heroDp = with(density) { if (heroHeightPx == 0) 460.dp else heroHeightPx.toDp() }
 
@@ -490,9 +513,16 @@ fun ShadowOverlay(
             RadarChartView(
                 scores = radarValues,
                 axisIconPainters = radarIcons,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 20.dp),
                 accentColor = ShadowPurple,
                 onAxisTapped = onAxisTapped,
+                onChartTapped = {
+                    if (scrollState.value > 0) {
+                        coroutineScope.launch {
+                            scrollState.animateScrollTo(0)
+                        }
+                    }
+                },
             )
         }
 
@@ -501,7 +531,20 @@ fun ShadowOverlay(
                 .fillMaxSize()
                 .verticalScroll(scrollState),
         ) {
-            Spacer(modifier = Modifier.height(heroDp))
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(heroDp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = scrollState.value > 0,
+                    ) {
+                        coroutineScope.launch {
+                            scrollState.animateScrollTo(0)
+                        }
+                    },
+            )
             SharedHomeSections(
                 tasks = state.tasks,
                 reminders = reminders,

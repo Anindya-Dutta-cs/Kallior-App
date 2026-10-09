@@ -19,7 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,22 +27,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.Icon
+
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
+
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ExperimentalMaterial3Api
+
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -60,8 +56,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -127,8 +122,8 @@ class OverlayManager(
                     MaterialTheme(colorScheme = darkColorScheme()) {
                         BlockingOverlay(
                             blockedTitle = "$appName is Blocked",
-                            onAllowUntilSelected = { minutes ->
-                                appBlockerController.allowAppTemporarily(packageName, minutes)
+                            onOpenKallior = {
+                                openUnblockScreen(context, packageName, appName)
                                 hideOverlay()
                             },
                             onExit = {
@@ -143,7 +138,7 @@ class OverlayManager(
         }
 
         // NOTE: Do NOT use FLAG_NOT_FOCUSABLE. Without focus the overlay cannot
-        // receive touches, so the Allow Until / Exit buttons would never fire and
+        // receive touches, so the Open Kallior / Exit buttons would never fire and
         // blocking would feel like "nothing happens". Keep the overlay touch-modal.
         val layoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -233,6 +228,17 @@ class OverlayManager(
     }
 }
 
+private fun openUnblockScreen(context: Context, packageName: String, label: String, domain: String? = null) {
+    context.startActivity(Intent(context, KalliorMainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        putExtra("navigate_to", "unblock")
+        putExtra("blocked_package", packageName)
+        putExtra("blocked_label", label)
+        putExtra("is_website", domain != null)
+        domain?.let { putExtra("blocked_domain", it) }
+    })
+}
+
 /** Shared utility to navigate to the Android home screen. */
 private fun goToHome(context: Context) {
     val intent = Intent(Intent.ACTION_MAIN).apply {
@@ -264,18 +270,15 @@ private fun redirectToGoogle(context: Context, browserPackage: String? = null) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BlockingOverlay(
     blockedTitle: String = "App is Blocked",
-    onAllowUntilSelected: (Int) -> Unit,
+    onOpenKallior: () -> Unit,
     onExit: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var isVisible by remember { mutableStateOf(false) }
-    var unlockMessage by remember { mutableStateOf<String?>(null) }
-    var selectedUnlockMinutes by remember { mutableStateOf<Int?>(null) }
-    val haptic = LocalHapticFeedback.current
+
 
     LaunchedEffect(Unit) { isVisible = true }
 
@@ -381,69 +384,22 @@ private fun BlockingOverlay(
 
             Spacer(modifier = Modifier.weight(2f))
 
-            var expanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = it }
+            OutlinedButton(
+                onClick = onOpenKallior,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = Color.White
+                ),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
+                shape = RoundedCornerShape(28.dp)
             ) {
-                OutlinedButton(
-                    onClick = { expanded = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .menuAnchor(),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Color.White
-                    ),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
-                    shape = RoundedCornerShape(28.dp)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Text(
-                            text = "Allow Until",
-                            fontFamily = FontFamily.Serif,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .size(28.dp)
-                                .background(Color.White, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = null,
-                                tint = Color.Black,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    modifier = Modifier.background(Color(0xFF1A1A1A)),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    listOf(5, 10, 15).forEach { minutes ->
-                        DropdownMenuItem(
-                            text = { Text("For $minutes minutes", color = Color.White, fontFamily = FontFamily.Serif) },
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                                selectedUnlockMinutes = minutes
-                                unlockMessage = "Unlocked for $minutes minutes"
-                                expanded = false
-                            },
-                            modifier = Modifier.background(Color(0xFF1A1A1A))
-                        )
-                    }
-                }
+                Text(
+                    text = "Open Kallior",
+                    fontFamily = FontFamily.Serif,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium,
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -470,36 +426,7 @@ private fun BlockingOverlay(
             Spacer(modifier = Modifier.weight(0.5f))
         }
 
-        unlockMessage?.let { message ->
-            BoxWithConstraints(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .padding(top = 32.dp, start = 24.dp, end = 24.dp),
-            ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(maxWidth * 0.225f),
-                    color = Color(0xFF2A211B),
-                    border = BorderStroke(1.dp, Color(0xFFFFA45C).copy(alpha = 0.6f)),
-                ) {
-                    Text(
-                        text = message,
-                        color = Color.White,
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.SemiBold,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 14.dp),
-                    )
-                }
-            }
-            LaunchedEffect(message) {
-                delay(900)
-                selectedUnlockMinutes?.let(onAllowUntilSelected)
-            }
-        }
+
     }
     }
 }
@@ -507,7 +434,7 @@ private fun BlockingOverlay(
 /** Shows a Compose overlay when the VPN blocks a website domain. */
 class WebsiteBlockOverlayManager(private val context: Context) {
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-    private val repository = WebsiteBlockerRepository(context)
+
     private val foregroundDetector = ForegroundAppDetector(context)
     private var overlayView: View? = null
     private var overlayOwner: ComposeOverlayOwner? = null
@@ -574,25 +501,9 @@ class WebsiteBlockOverlayManager(private val context: Context) {
                     MaterialTheme(colorScheme = darkColorScheme()) {
                         BlockingOverlay(
                             blockedTitle = title,
-                            onAllowUntilSelected = { durationMinutes ->
-                                val expiry = System.currentTimeMillis() + (durationMinutes * 60_000L)
-                                // Immediate in-memory whitelist for the VPN service
-                                BlockEventBus.updateWhitelist(domain, expiry)
-                                // Persistent whitelist for future restarts
-                                initializeScope?.launch {
-                                    repository.setAllowUntil(domain, expiry)
-                                    // This website block was already counted as an
-                                    // attempt when its overlay appeared.
-                                    BlockerStatsTracker.recordBypass()
-                                }
+                            onOpenKallior = {
+                                openUnblockScreen(context, foregroundInfo.packageName, websiteName, domain)
                                 hideOverlay()
-                                // Delay the browser refresh so the VPN tunnel has
-                                // time to restart (triggered by the whitelist change)
-                                // and the OS DNS cache is flushed.
-                                initializeScope?.launch(Dispatchers.Main) {
-                                    kotlinx.coroutines.delay(2000)
-                                    refreshBrowser(domain)
-                                }
                             },
                             onExit = {
                                 hideOverlay()
@@ -683,15 +594,4 @@ class WebsiteBlockOverlayManager(private val context: Context) {
         currentBlockedPackage = null
     }
 
-    private fun refreshBrowser(domain: String) {
-        val url = if (domain.contains("://")) domain else "https://$domain"
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        try {
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            Log.e("WebsiteBlockOverlay", "Failed to refresh browser for $domain", e)
-        }
-    }
 }

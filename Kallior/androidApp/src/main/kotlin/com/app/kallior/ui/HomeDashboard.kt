@@ -106,7 +106,7 @@ internal fun SharedHomeSections(
                         }
                     )
                 )
-                .padding(top = 28.dp, bottom = 140.dp),
+                .padding(top = 28.dp, bottom = 220.dp),
         ) {
             Column(
                 modifier = Modifier

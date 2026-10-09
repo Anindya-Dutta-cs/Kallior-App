@@ -100,12 +100,15 @@ class WebsiteBlockerVpnService : VpnService() {
         // cache. Without this, Android/Chrome keep using the cached NXDOMAIN
         // and the site never reconnects.
         scope.launch {
-            var previousSize = 0
+            var previousWhitelist: Map<String, Long>? = null
             BlockEventBus.whitelistState.collect { whitelist ->
-                if (whitelist.size > previousSize && previousSize > 0) {
+                // Renewing an expired allowance changes the expiry, not the map size.
+                if (previousWhitelist != null && whitelist.any { (domain, expiry) ->
+                        expiry > (previousWhitelist?.get(domain) ?: 0L)
+                    }) {
                     restartVpn()
                 }
-                previousSize = whitelist.size
+                previousWhitelist = whitelist
             }
         }
         registerNetworkCallback()

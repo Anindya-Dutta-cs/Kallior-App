@@ -1,6 +1,11 @@
 ﻿package com.app.kallior
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
@@ -12,12 +17,14 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -45,6 +54,7 @@ import com.app.kallior.ui.AriaAlarmScreen
 import com.app.kallior.ui.BadgesScreen
 import com.app.kallior.ui.FocusFortressScreen
 import com.app.kallior.ui.HomeScreen
+import com.app.kallior.ui.UnblockScreen
 import com.app.kallior.ui.KalliorColors
 import com.app.kallior.ui.ProfileScreen
 import com.app.kallior.ui.ProgressionFeedbackHost
@@ -61,12 +71,22 @@ val LocalNavBarTransition = compositionLocalOf { mutableStateOf(false) }
 
 /** Navigation graph for the Android app shell. */
 @Composable
-fun KalliorNavGraph(navController: NavHostController) {
-    AuthenticationGate { AuthenticatedKalliorNavGraph(navController) }
+fun KalliorNavGraph(
+    navController: NavHostController,
+    unblockRequest: UnblockRequest? = null,
+    onUnblockRequestHandled: () -> Unit = {},
+) {
+    AuthenticationGate {
+        AuthenticatedKalliorNavGraph(navController, unblockRequest, onUnblockRequestHandled)
+    }
 }
 
 @Composable
-private fun AuthenticatedKalliorNavGraph(navController: NavHostController) {
+private fun AuthenticatedKalliorNavGraph(
+    navController: NavHostController,
+    unblockRequest: UnblockRequest?,
+    onUnblockRequestHandled: () -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val gameViewModel = remember {
@@ -77,6 +97,21 @@ private fun AuthenticatedKalliorNavGraph(navController: NavHostController) {
     }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val haptic = LocalHapticFeedback.current
+    var unblockPopup by remember { mutableStateOf<UnblockSuccessEvent?>(null) }
+
+    LaunchedEffect(Unit) {
+        BlockEventBus.unblockSuccess.collectLatest { event ->
+            unblockPopup = event
+            delay(3500)
+            unblockPopup = null
+        }
+    }
+    LaunchedEffect(unblockPopup, currentRoute) {
+        if (unblockPopup != null && currentRoute == "home") {
+            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+        }
+    }
 
     var showMoreMenu by remember { mutableStateOf(false) }
     val isTransitioning = remember { mutableStateOf(false) }
@@ -92,6 +127,42 @@ private fun AuthenticatedKalliorNavGraph(navController: NavHostController) {
                     HomeScreen(
                         navController = navController,
                         gameViewModel = gameViewModel,
+                    )
+                }
+                composable(
+                    route = "unblock?pkg={pkg}&label={label}&domain={domain}&isWebsite={isWebsite}",
+                    arguments = listOf(
+                        androidx.navigation.navArgument("pkg") { defaultValue = "" },
+                        androidx.navigation.navArgument("label") { defaultValue = "App" },
+                        androidx.navigation.navArgument("domain") { defaultValue = "" },
+                        androidx.navigation.navArgument("isWebsite") {
+                            type = androidx.navigation.NavType.BoolType
+                            defaultValue = false
+                        },
+                    ),
+                ) { entry ->
+                    val packageName = entry.arguments?.getString("pkg").orEmpty()
+                    val domain = entry.arguments?.getString("domain").orEmpty()
+                    val isWebsite = entry.arguments?.getBoolean("isWebsite") ?: false
+                    val cancel = { (context as? ComponentActivity)?.finish(); Unit }
+                    BackHandler(onBack = cancel)
+                    UnblockScreen(
+                        packageName = packageName,
+                        blockedLabel = entry.arguments?.getString("label") ?: "App",
+                        domain = domain,
+                        isWebsite = isWebsite,
+                        onUnblocked = {
+                            if (openUnblockedTarget(context, packageName, domain, isWebsite)) {
+                                (context as? ComponentActivity)?.finish()
+                            } else {
+                                // If the target was uninstalled or cannot handle the URL,
+                                // the allowance remains valid and Kallior stays usable.
+                                navController.navigate("home") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            }
+                        },
+                        onCancel = cancel,
                     )
                 }
                 composable("profile") {
@@ -178,11 +249,24 @@ private fun AuthenticatedKalliorNavGraph(navController: NavHostController) {
                 }
             }
 
+            LaunchedEffect(unblockRequest?.id) {
+                val request = unblockRequest ?: return@LaunchedEffect
+                navController.navigate(
+                    "unblock?pkg=${Uri.encode(request.packageName)}&label=${Uri.encode(request.label)}" +
+                        "&domain=${Uri.encode(request.domain)}&isWebsite=${request.isWebsite}"
+                ) {
+                    popUpTo("home") { inclusive = false }
+                    launchSingleTop = true
+                }
+                onUnblockRequestHandled()
+            }
+
             val isScoreScreen = currentRoute?.startsWith("field_score") == true
+            val isUnblockScreen = currentRoute?.startsWith("unblock") == true
 
             // Floating Navigation Bar - Overlaying content to reveal background through curves
             AnimatedVisibility(
-                visible = !isScoreScreen,
+                visible = !isScoreScreen && !isUnblockScreen,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                 modifier = Modifier.align(Alignment.BottomCenter),
@@ -209,7 +293,7 @@ private fun AuthenticatedKalliorNavGraph(navController: NavHostController) {
 
             // More Menu Expansion - Panel is transparent, items are styled like the nav bar
             AnimatedVisibility(
-                visible = showMoreMenu,
+                visible = showMoreMenu && !isUnblockScreen,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
                 modifier = Modifier
@@ -236,6 +320,68 @@ private fun AuthenticatedKalliorNavGraph(navController: NavHostController) {
             }
 
             ProgressionFeedbackHost(gameViewModel)
+            UnblockFeedbackPopup(unblockPopup, currentRoute == "home")
+        }
+    }
+}
+
+private fun openUnblockedTarget(context: Context, packageName: String, domain: String, isWebsite: Boolean): Boolean {
+    if (!isWebsite) {
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName) ?: return false
+        return try {
+            context.startActivity(launchIntent)
+            true
+        } catch (e: Exception) {
+            Log.w("UnblockScreen", "Could not open allowed app $packageName", e)
+            false
+        }
+    }
+
+    val host = domain.removePrefix("www.").takeIf { it.isNotBlank() } ?: return false
+    val url = Uri.parse("https://$host")
+    if (url.host.isNullOrBlank()) return false
+    val browserIntent = Intent(Intent.ACTION_VIEW, url)
+    val intents = if (packageName.isBlank()) listOf(browserIntent) else
+        listOf(Intent(browserIntent).setPackage(packageName), browserIntent)
+    for (intent in intents) {
+        try {
+            context.startActivity(intent)
+            return true
+        } catch (e: Exception) {
+            Log.w("UnblockScreen", "Could not open $host with ${intent.`package` ?: "default browser"}", e)
+        }
+    }
+    return false
+}
+
+@Composable
+private fun UnblockFeedbackPopup(event: UnblockSuccessEvent?, isHome: Boolean) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        AnimatedVisibility(
+            visible = event != null && isHome,
+            enter = slideInVertically(initialOffsetY = { -it / 2 }) + fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 56.dp).fillMaxWidth(0.86f),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(maxWidth * 0.1935f),
+                color = KalliorColors.PrimaryLayer,
+                border = BorderStroke(1.dp, KalliorColors.AccentOrange.copy(alpha = 0.65f)),
+                shadowElevation = 10.dp,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = KalliorColors.AccentOrange)
+                    Text(
+                        text = event?.let { "${it.label} unblocked for ${it.durationMinutes} min" }.orEmpty(),
+                        color = KalliorColors.NormalText,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+            }
         }
     }
 }

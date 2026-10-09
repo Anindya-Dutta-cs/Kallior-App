@@ -84,6 +84,7 @@ fun RadarChartView(
     accentColor: Color = KalliorColors.AccentOrange,
     axisNames: List<String> = RadarAxisNames,
     onAxisTapped: ((axisIndex: Int) -> Unit)? = null,
+    onChartTapped: (() -> Unit)? = null,
 ) {
     val axisCount = 5
     val ringCount = 5
@@ -176,7 +177,14 @@ fun RadarChartView(
         val labelRadius = chartBox * (maxRadiusFraction + 0.145f)
 
         Box(
-            modifier = Modifier.size(chartBox),
+            modifier = Modifier
+                .size(chartBox)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) {
+                    onChartTapped?.invoke()
+                },
             contentAlignment = Alignment.Center,
         ) {
             if (selectedAxis != null) {
@@ -297,6 +305,7 @@ fun RadarChartView(
                                 indication = null,
                             ) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onChartTapped?.invoke()
                                 if (selectedAxis == i && onAxisTapped != null) {
                                     coroutineScope.launch { onAxisTapped.invoke(i) }
                                 } else {
@@ -355,6 +364,7 @@ fun RadarChartView(
                         .background(KalliorColors.SurfaceElevated)
                         .clickable {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onChartTapped?.invoke()
                             onAxisTapped?.invoke(axis)
                         }
                         .padding(horizontal = 14.dp, vertical = 10.dp),

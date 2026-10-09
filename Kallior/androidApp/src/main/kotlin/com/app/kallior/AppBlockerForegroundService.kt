@@ -1,5 +1,6 @@
 ﻿package com.app.kallior
 
+import android.app.KeyguardManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -16,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.cancel
 
 class AppBlockerForegroundService : Service() {
@@ -24,6 +26,7 @@ class AppBlockerForegroundService : Service() {
     private var serviceJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO)
     private lateinit var overlayManager: OverlayManager
+    private lateinit var timerOverlayManager: TimerOverlayManager
     private lateinit var blockerRepository: BlockerRepository
     private lateinit var appBlockerController: AppBlockerControllerImpl
     private var blockedApps = setOf<String>()
@@ -38,6 +41,7 @@ class AppBlockerForegroundService : Service() {
             WebsiteBlockerRepository(this),
         )
         overlayManager = OverlayManager(this, blockerRepository, appBlockerController)
+        timerOverlayManager = TimerOverlayManager(this)
         createNotificationChannel()
 
         scope.launch {
@@ -48,6 +52,7 @@ class AppBlockerForegroundService : Service() {
         scope.launch {
             blockerRepository.allowUntilFlow.collect { map ->
                 allowUntil = map
+                withContext(Dispatchers.Main) { timerOverlayManager.registerAllowances(map) }
             }
         }
     }
@@ -69,6 +74,9 @@ class AppBlockerForegroundService : Service() {
         serviceJob?.cancel()
         serviceJob = scope.launch {
             val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val foregroundDetector = ForegroundAppDetector(this@AppBlockerForegroundService)
+            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            var lastKnownForegroundPackage: String? = null
             while (isActive) {
                 val endTime = System.currentTimeMillis()
                 val startTime = endTime - 1000 * 10 // check last 10 seconds
@@ -84,25 +92,46 @@ class AppBlockerForegroundService : Service() {
                     }
                 }
 
-                if (latestResumedPackage != null) {
-                    launch(Dispatchers.Main) {
-                        overlayManager.onAppSwitched(latestResumedPackage)
+                // Remember the foreground app after its resume event ages out of the
+                // 10-second query window, so the countdown and expiry still advance.
+                // On screen-off or lock, forget it rather than covering the lock screen.
+                val foregroundPackage = if (!foregroundDetector.isScreenInteractive() ||
+                    keyguardManager.isKeyguardLocked
+                ) {
+                    lastKnownForegroundPackage = null
+                    null
+                } else {
+                    lastKnownForegroundPackage = latestResumedPackage
+                        ?: lastKnownForegroundPackage
+                        ?: foregroundDetector.getForegroundInfo()?.packageName
+                    lastKnownForegroundPackage
+                }
+                val currentBlockedApps = blockedApps
+                val currentAllowUntil = allowUntil
+                launch(Dispatchers.Main) {
+                    foregroundPackage?.let { overlayManager.onAppSwitched(it) }
+                    val expiry = foregroundPackage?.let { currentAllowUntil[it] }
+                    val temporarilyAllowed = expiry?.let { it > System.currentTimeMillis() } ?: false
+                    timerOverlayManager.update(
+                        foregroundPackage,
+                        expiry?.takeIf {
+                            temporarilyAllowed && currentBlockedApps.contains(foregroundPackage)
+                        },
+                    )
 
-                        val temporarilyAllowed = allowUntil[latestResumedPackage]
-                            ?.let { it > System.currentTimeMillis() } ?: false
-
-                        if (blockedApps.contains(latestResumedPackage) && !temporarilyAllowed) {
-                            if (!overlayManager.showOverlay(latestResumedPackage)) {
-                                // Only give up permanently if the permission itself is gone.
-                                // A one-off BadTokenException/SecurityException should not kill
-                                // monitoring for the rest of the session.
-                                val permManager = PermissionManager(this@AppBlockerForegroundService)
-                                if (!permManager.hasOverlayPermission()) {
-                                    Log.w("BlockerDebug", "Overlay permission revoked — stopping service")
-                                    stopSelf()
-                                } else {
-                                    Log.w("BlockerDebug", "Overlay show failed transiently — will retry next cycle")
-                                }
+                    if (foregroundPackage != null && foregroundPackage in currentBlockedApps &&
+                        !temporarilyAllowed
+                    ) {
+                        if (!overlayManager.showOverlay(foregroundPackage)) {
+                            // Only give up permanently if the permission itself is gone.
+                            // A one-off BadTokenException/SecurityException should not kill
+                            // monitoring for the rest of the session.
+                            val permManager = PermissionManager(this@AppBlockerForegroundService)
+                            if (!permManager.hasOverlayPermission()) {
+                                Log.w("BlockerDebug", "Overlay permission revoked — stopping service")
+                                stopSelf()
+                            } else {
+                                Log.w("BlockerDebug", "Overlay show failed transiently — will retry next cycle")
                             }
                         }
                     }
@@ -117,6 +146,7 @@ class AppBlockerForegroundService : Service() {
         super.onDestroy()
         serviceJob?.cancel()
         overlayManager.hideOverlay()
+        timerOverlayManager.destroy()
         scope.cancel()
     }
 

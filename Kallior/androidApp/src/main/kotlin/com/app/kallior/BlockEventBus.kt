@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 data class BlockedDomainEvent(val domain: String, val timestamp: Long)
+data class UnblockSuccessEvent(val label: String, val durationMinutes: Int)
 
 /** Event bus for block events and immediate whitelisting sync between UI and VPN. */
 object BlockEventBus {
@@ -19,6 +20,18 @@ object BlockEventBus {
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     val blockEvents: SharedFlow<BlockedDomainEvent> = _blockEvents.asSharedFlow()
+
+    private val _unblockSuccess = MutableSharedFlow<UnblockSuccessEvent>(
+        replay = 0,
+        extraBufferCapacity = 5,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val unblockSuccess: SharedFlow<UnblockSuccessEvent> = _unblockSuccess.asSharedFlow()
+
+    fun emitUnblockSuccess(label: String, durationMinutes: Int) {
+        _unblockSuccess.tryEmit(UnblockSuccessEvent(label, durationMinutes))
+    }
+
 
     private val _whitelistState = MutableStateFlow<Map<String, Long>>(emptyMap())
     val whitelistState: StateFlow<Map<String, Long>> = _whitelistState.asStateFlow()
