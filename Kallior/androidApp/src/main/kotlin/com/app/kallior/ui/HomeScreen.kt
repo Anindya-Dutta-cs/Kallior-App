@@ -256,10 +256,19 @@ fun HomeScreen(
                     }
                 }
         ) {
+            PermanentHomeHeader(
+                userName = gameViewModel.player.name,
+                onProfileTap = { navController.navigate("profile") },
+                contentAlpha = headerAlpha,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .zIndex(10f),
+            )
+
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .zIndex(if (scrollState.value > 80) 0f else 2f)
+                    .zIndex(1f)
                     .onSizeChanged { heroHeightPx = it.height }
                     .scrollable(
                         orientation = Orientation.Vertical,
@@ -269,18 +278,13 @@ fun HomeScreen(
                     )
                     .graphicsLayer { scaleX = scale; scaleY = scale }
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(top = 8.dp),
+                    .padding(top = 96.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                HomeHeader(
-                    userName = gameViewModel.player.name,
-                    onProfileTap = { navController.navigate("profile") },
-                    contentAlpha = headerAlpha,
-                )
                 RadarChartView(
                     scores = radarValues,
                     axisIconPainters = radarIcons,
-                    modifier = Modifier.padding(top = 20.dp),
+                    modifier = Modifier.padding(top = 8.dp),
                     onAxisTapped = { axisIndex ->
                         navController.navigate("field_score/$axisIndex")
                     },
@@ -297,6 +301,7 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .zIndex(2f)
                     .verticalScroll(scrollState),
             ) {
                 Spacer(
@@ -486,10 +491,20 @@ fun ShadowOverlay(
             .fillMaxSize()
             .background(KalliorColors.CanvasBackground)
     ) {
+        PermanentHomeHeader(
+            userName = "Shadow",
+            onProfileTap = {},
+            accentColor = ShadowPurple,
+            interactionsEnabled = false,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .zIndex(10f),
+        )
+
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .zIndex(if (scrollState.value > 80) 0f else 2f)
+                .zIndex(1f)
                 .onSizeChanged { heroHeightPx = it.height }
                 .scrollable(
                     orientation = Orientation.Vertical,
@@ -499,21 +514,15 @@ fun ShadowOverlay(
                 )
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(top = 8.dp),
+                .padding(top = 96.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            HomeHeader(
-                userName = "Shadow",
-                onProfileTap = {},
-                accentColor = ShadowPurple,
-                interactionsEnabled = false,
-            )
             val scores = state.scores
             val radarValues = listOf(scores.focus, scores.discipline, scores.health, scores.resilience, scores.consistency)
             RadarChartView(
                 scores = radarValues,
                 axisIconPainters = radarIcons,
-                modifier = Modifier.padding(top = 20.dp),
+                modifier = Modifier.padding(top = 8.dp),
                 accentColor = ShadowPurple,
                 onAxisTapped = onAxisTapped,
                 onChartTapped = {
@@ -529,6 +538,7 @@ fun ShadowOverlay(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .zIndex(2f)
                 .verticalScroll(scrollState),
         ) {
             Spacer(

@@ -6,9 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Person
@@ -19,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
@@ -27,6 +31,40 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Calendar
+
+@Composable
+fun PermanentHomeHeader(
+    userName: String,
+    onProfileTap: () -> Unit,
+    modifier: Modifier = Modifier,
+    accentColor: Color = KalliorColors.AccentOrange,
+    interactionsEnabled: Boolean = true,
+    contentAlpha: Float = 1f,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0.0f to KalliorColors.CanvasBackground,
+                        0.7f to KalliorColors.CanvasBackground,
+                        1.0f to KalliorColors.CanvasBackground.copy(alpha = 0.05f),
+                    )
+                )
+            )
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(top = 8.dp, bottom = 18.dp),
+    ) {
+        HomeHeader(
+            userName = userName,
+            onProfileTap = onProfileTap,
+            accentColor = accentColor,
+            interactionsEnabled = interactionsEnabled,
+            contentAlpha = contentAlpha,
+        )
+    }
+}
 
 @Composable
 fun HomeHeader(
@@ -91,6 +129,7 @@ private fun timeOfDayGreeting(): String {
     return when (hour) {
         in 5..11 -> "Good morning,"
         in 12..16 -> "Good afternoon,"
-        else -> "Good evening,"
+        in 17..21 -> "Good evening,"
+        else -> "Good night,"
     }
 }

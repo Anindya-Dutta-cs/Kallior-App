@@ -1,13 +1,10 @@
 ﻿package com.app.kallior.ui
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -29,40 +26,36 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import kallos.model.Remainder
 import kallos.model.TaskStatus
 import kallos.viewmodel.TaskUi
 import com.app.kallior.ui.theme.ShadowButton
-import com.app.kallior.ui.theme.ShadowButtonGlyph
 import com.app.kallior.ui.theme.ShadowGradientBot
 import com.app.kallior.ui.theme.ShadowGradientTop
+import kotlin.math.roundToInt
 
 @Composable
 internal fun SharedHomeSections(
@@ -78,9 +71,7 @@ internal fun SharedHomeSections(
     onDeleteTask: (String) -> Unit,
     contentAlpha: Float = 1f,
 ) {
-    var showAddChooser by remember { mutableStateOf(false) }
     val accent = if (isShadow) ShadowButton else KalliorColors.AccentOrange
-    val glyph = if (isShadow) ShadowButtonGlyph else Color.White
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val cornerRadius = this.maxWidth * 0.225f
@@ -99,7 +90,7 @@ internal fun SharedHomeSections(
                             )
                         } else {
                             arrayOf(
-                                0.0f to KalliorColors.DarkBrown.copy(alpha = 0.55f),
+                                0.0f to KalliorColors.DarkBrown,
                                 0.18f to KalliorColors.CanvasBackground,
                                 1.0f to KalliorColors.CanvasBackground,
                             )
@@ -114,18 +105,14 @@ internal fun SharedHomeSections(
                     .padding(horizontal = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(28.dp),
             ) {
-                DailyProgressCard(
+                DailyProgressArcSection(
                     progressPercent = progressPercent,
                     accent = accent,
-                    glyph = glyph,
-                    enabled = !isShadow,
-                    onAddClick = { if (!isShadow) showAddChooser = true },
                 )
 
                 HomeSectionHeader(
                     title = "Tasks",
-                    actionLabel = null,
-                    onAction = null,
+                    onAddClick = if (isShadow) null else onAddTask,
                 )
                 if (tasks.isEmpty()) {
                     CompactEmptyState(
@@ -151,8 +138,7 @@ internal fun SharedHomeSections(
 
                 HomeSectionHeader(
                     title = "Reminders",
-                    actionLabel = null,
-                    onAction = null,
+                    onAddClick = if (isShadow) null else onAddReminder,
                 )
                 if (reminders.isEmpty()) {
                     CompactEmptyState(
@@ -186,153 +172,109 @@ internal fun SharedHomeSections(
                 SleepScheduleCard(enabled = !isShadow)
             }
         }
-
-        if (showAddChooser && !isShadow) {
-            Dialog(
-                onDismissRequest = { showAddChooser = false },
-                properties = DialogProperties(usePlatformDefaultWidth = false),
-            ) {
-                AddActionChooser(
-                    onTask = {
-                        showAddChooser = false
-                        onAddTask()
-                    },
-                    onReminder = {
-                        showAddChooser = false
-                        onAddReminder()
-                    },
-                    onDismiss = { showAddChooser = false },
-                )
-            }
-        }
     }
 }
 
 @Composable
-private fun DailyProgressCard(
+private fun DailyProgressArcSection(
     progressPercent: Float,
     accent: Color,
-    glyph: Color,
-    enabled: Boolean,
-    onAddClick: () -> Unit,
 ) {
-    val animated by animateFloatAsState(
+    val animatedProgress by animateFloatAsState(
         targetValue = progressPercent.coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
-        label = "dailyProgress",
+        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
+        label = "dailyArcProgress",
     )
-    val percentLabel = (animated * 100f).toInt()
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(KalliorColors.SurfaceCharcoal)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Today's progress",
-                color = KalliorColors.MutedText,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "$percentLabel%",
-                color = KalliorColors.NormalText,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Box(
+        Text(
+            text = "Today's progress",
+            color = KalliorColors.MutedText,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 0.6.sp,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Box(
+            modifier = Modifier
+                .width(220.dp)
+                .height(130.dp),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            Canvas(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.08f)),
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(animated.coerceAtLeast(0.02f))
-                        .height(6.dp)
-                        .clip(CircleShape)
-                        .background(accent),
+                val strokeWidth = 14.dp.toPx()
+                val arcWidth = size.width - strokeWidth
+                val topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f)
+                val arcSize = Size(arcWidth, arcWidth)
+
+                val startAngle = 180f
+                val sweepAngle = 180f
+
+                // Track (Background Arc)
+                drawArc(
+                    color = Color.White.copy(alpha = 0.08f),
+                    startAngle = startAngle,
+                    sweepAngle = sweepAngle,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                )
+
+                // Ambient glow layer under active progress
+                if (animatedProgress > 0f) {
+                    drawArc(
+                        color = accent.copy(alpha = 0.25f),
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle * animatedProgress,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = strokeWidth + 6.dp.toPx(), cap = StrokeCap.Round),
+                    )
+
+                    // Foreground Progress Arc
+                    drawArc(
+                        color = accent,
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle * animatedProgress,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                AnimatedCountText(
+                    targetValue = progressPercent.coerceIn(0f, 1f) * 100f,
+                    format = { "${it.roundToInt()}%" },
+                    style = TextStyle(
+                        fontFamily = Philosopher,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 32.sp,
+                    ),
+                    color = KalliorColors.NormalText,
+                    label = "TodayProgressPercent",
                 )
             }
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        GlowingPlusButton(
-            accent = accent,
-            glyph = glyph,
-            enabled = enabled,
-            onClick = onAddClick,
-        )
-    }
-}
-
-@Composable
-private fun GlowingPlusButton(
-    accent: Color,
-    glyph: Color,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val infinite = rememberInfiniteTransition(label = "plusPulse")
-    val pulse by infinite.animateFloat(
-        initialValue = 0.18f,
-        targetValue = 0.32f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "plusGlow",
-    )
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.92f else 1f,
-        animationSpec = if (pressed) {
-            tween(80)
-        } else {
-            spring(dampingRatio = 0.48f, stiffness = 420f)
-        },
-        label = "plusPress",
-    )
-
-    Box(
-        modifier = Modifier.size(56.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .graphicsLayer { alpha = if (enabled) pulse else 0.12f }
-                .clip(CircleShape)
-                .background(accent.copy(alpha = 0.35f)),
-        )
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .graphicsLayer { scaleX = scale; scaleY = scale }
-                .clip(CircleShape)
-                .background(accent)
-                .clickable(
-                    enabled = enabled,
-                    interactionSource = interaction,
-                    indication = null,
-                    onClick = onClick,
-                )
-                .semantics { contentDescription = "Add task or reminder" },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                tint = glyph,
-                modifier = Modifier.size(26.dp),
-            )
         }
     }
 }
@@ -340,8 +282,9 @@ private fun GlowingPlusButton(
 @Composable
 internal fun HomeSectionHeader(
     title: String,
-    actionLabel: String?,
-    onAction: (() -> Unit)?,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+    onAddClick: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -355,25 +298,75 @@ internal fun HomeSectionHeader(
             fontSize = 24.sp,
             color = KalliorColors.NormalText,
         )
-        if (actionLabel != null && onAction != null) {
-            Row(
-                modifier = Modifier.clickable(onClick = onAction),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = actionLabel,
-                    color = KalliorColors.MutedText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                )
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = KalliorColors.MutedText,
-                    modifier = Modifier.size(18.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (actionLabel != null && onAction != null) {
+                Row(
+                    modifier = Modifier.clickable(onClick = onAction),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = actionLabel,
+                        color = KalliorColors.MutedText,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = KalliorColors.MutedText,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            if (onAddClick != null) {
+                SectionAddButton(
+                    onClick = onAddClick,
+                    contentDescription = "Add $title",
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SectionAddButton(
+    onClick: () -> Unit,
+    contentDescription: String,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.88f else 1f,
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
+        label = "addButtonScale",
+    )
+
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clip(CircleShape)
+            .background(KalliorColors.AccentOrange.copy(alpha = 0.16f))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .semantics { this.contentDescription = contentDescription },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Add,
+            contentDescription = null,
+            tint = KalliorColors.AccentOrange,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
@@ -443,94 +436,6 @@ private fun BadgePreview(
             fontSize = 13.sp,
             modifier = Modifier.weight(1f),
         )
-    }
-}
-
-@Composable
-private fun AddActionChooser(
-    onTask: () -> Unit,
-    onReminder: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.45f))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onDismiss,
-            )
-            .padding(horizontal = 20.dp),
-        contentAlignment = Alignment.BottomCenter,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 96.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(KalliorColors.SurfaceElevated)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {},
-                )
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                text = "Add",
-                color = KalliorColors.MutedText,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.1.sp,
-            )
-            AddChooserRow(
-                icon = Icons.Outlined.TaskAlt,
-                label = "Task",
-                subtitle = "Something to complete",
-                onClick = onTask,
-            )
-            AddChooserRow(
-                icon = Icons.Outlined.Notifications,
-                label = "Reminder",
-                subtitle = "Something to remember",
-                onClick = onReminder,
-            )
-        }
-    }
-}
-
-@Composable
-private fun AddChooserRow(
-    icon: ImageVector,
-    label: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(KalliorColors.SurfaceCharcoal)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(KalliorColors.AccentOrange.copy(alpha = 0.16f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = KalliorColors.AccentOrange, modifier = Modifier.size(18.dp))
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, color = KalliorColors.NormalText, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            Text(text = subtitle, color = KalliorColors.MutedText, fontSize = 12.sp)
-        }
     }
 }
 
